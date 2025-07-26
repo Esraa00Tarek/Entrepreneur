@@ -111,7 +111,7 @@ export default function AdminExecutionPhases() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    axios.get('https://backendelevante-production.up.railway.app/api/execution-phases', {
+    axios.get('http://localhost:5000/api/execution-phases', {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {

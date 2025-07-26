@@ -70,7 +70,7 @@ export default function NotificationDropdown({ userId: propUserId, userRole: pro
   const [markAllLoading, setMarkAllLoading] = useState(false);
   const ref = useRef();
   const navigate = useNavigate();
-  const BASE_URL = 'https://backendelevante-production.up.railway.app';
+  const BASE_URL = 'http://localhost:5000';
 
   // جلب الإشعارات من الباك
   const fetchNotifications = async () => {

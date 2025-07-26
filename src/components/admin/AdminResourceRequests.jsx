@@ -84,7 +84,7 @@ export default function AdminResourceRequests() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    axios.get('https://backendelevante-production.up.railway.app/api/requests', {
+    axios.get('http://localhost:5000/api/requests', {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => {
@@ -113,14 +113,14 @@ export default function AdminResourceRequests() {
     const token = localStorage.getItem('token');
     try {
       await axios.put(
-        `https://backendelevante-production.up.railway.app/api/requests/${requestId}`,
+        `http://localhost:5000/api/requests/${requestId}`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       // Refetch requests after update
-      const res = await axios.get('https://backendelevante-production.up.railway.app/api/requests', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+              const res = await axios.get('http://localhost:5000/api/requests', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
       setRequests(res.data);
     } catch (err) {
       console.error('Failed to update request status', err);

@@ -17,7 +17,7 @@ export default function OfferDetailsModal({ isOpen, onClose, offer, onStatusChan
   const handleDownload = async (filename) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`https://backendelevante-production.up.railway.app/api/supplier-offers/${offer.id}/attachments/${filename}`, {
+      const response = await axios.get(`http://localhost:5000/api/supplier-offers/${offer.id}/attachments/${filename}`, {
         responseType: 'blob',
         headers: { Authorization: `Bearer ${token}` }
       });

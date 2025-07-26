@@ -33,7 +33,7 @@ export default function NotificationsPage() {
   const [markAllLoading, setMarkAllLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const BASE_URL = 'https://backendelevante-production.up.railway.app';
+  const BASE_URL = 'http://localhost:5000';
 
   useEffect(() => {
     setLoading(true);

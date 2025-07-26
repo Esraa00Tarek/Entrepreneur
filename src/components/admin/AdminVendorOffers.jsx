@@ -255,7 +255,7 @@ export default function AdminVendorOffers() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    axios.get('https://backendelevante-production.up.railway.app/api/supplier-offers', {
+    axios.get('http://localhost:5000/api/supplier-offers', {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => {
@@ -324,11 +324,11 @@ export default function AdminVendorOffers() {
     if (offerToDelete) {
       const token = localStorage.getItem('token');
       try {
-        await axios.delete(`https://backendelevante-production.up.railway.app/api/supplier-offers/${offerToDelete}`, {
+        await axios.delete(`http://localhost:5000/api/supplier-offers/${offerToDelete}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         // Refetch offers after delete
-        const res = await axios.get('https://backendelevante-production.up.railway.app/api/supplier-offers', {
+        const res = await axios.get('http://localhost:5000/api/supplier-offers', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (Array.isArray(res.data)) {
@@ -353,12 +353,12 @@ export default function AdminVendorOffers() {
       const token = localStorage.getItem('token');
       try {
         for (const offerId of selectedOffers) {
-          await axios.delete(`https://backendelevante-production.up.railway.app/api/supplier-offers/${offerId}`, {
+          await axios.delete(`http://localhost:5000/api/supplier-offers/${offerId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
         }
         // Refetch offers after bulk delete
-        const res = await axios.get('https://backendelevante-production.up.railway.app/api/supplier-offers', {
+        const res = await axios.get('http://localhost:5000/api/supplier-offers', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (Array.isArray(res.data)) {
@@ -381,12 +381,12 @@ export default function AdminVendorOffers() {
     const token = localStorage.getItem('token');
     try {
       await axios.put(
-        `https://backendelevante-production.up.railway.app/api/supplier-offers/${offerId}`,
+        `http://localhost:5000/api/supplier-offers/${offerId}`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       // Refetch offers after update
-      const res = await axios.get('https://backendelevante-production.up.railway.app/api/supplier-offers', {
+      const res = await axios.get('http://localhost:5000/api/supplier-offers', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (Array.isArray(res.data)) {

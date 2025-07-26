@@ -135,7 +135,7 @@ export default function SupplierRegisterForm({ oldData = {}, feedback = {}, reje
       if (form.portfolio) formData.append("portfolioLink", form.portfolio);
       if (form.companyProfile) formData.append("companyProfile", form.companyProfile);
       await axios.post(
-        "https://backendelevante-production.up.railway.app/api/users/register",
+        "http://localhost:5000/api/users/register",
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );

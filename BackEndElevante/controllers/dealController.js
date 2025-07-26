@@ -179,28 +179,14 @@ export const getMyDeals = asyncHandler(async (req, res) => {
     const filter = { 'participants.user': req.user._id };
     if (req.user.role !== 'admin') filter.isDeleted = false;
     
-    // Pagination parameters
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 6; // 6 deals per page (2 rows of 3 cards)
-    const skip = (page - 1) * limit;
-    
-    // Get total count for pagination
-    const total = await Deal.countDocuments(filter);
-    
     const deals = await Deal.find(filter)
       .populate('participants.user', 'name role')
       .populate('relatedBusiness', 'name status')
-      .populate('relatedRequest', 'title offerType')
-      .sort({ createdAt: -1 }) // Sort by newest first
-      .skip(skip)
-      .limit(limit);
+      .populate('relatedRequest', 'title offerType');
     
     return res.status(200).json({
       success: true,
       count: deals.length,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
       data: deals
     });
   } catch (error) {

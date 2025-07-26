@@ -18,7 +18,7 @@ export const fetchFeedback = createAsyncThunk('feedback/fetchFeedback', async ({
     if (status) params.status = status;
     params.page = page;
     params.limit = limit;
-    const res = await axios.get('https://backendelevante-production.up.railway.app/api/reports', {
+    const res = await axios.get('http://localhost:5000/api/reports', {
       headers: { Authorization: `Bearer ${token}` },
       params
     });
@@ -32,7 +32,7 @@ export const fetchFeedback = createAsyncThunk('feedback/fetchFeedback', async ({
 export const fetchReviews = createAsyncThunk('feedback/fetchReviews', async (_, { rejectWithValue }) => {
   try {
     const token = localStorage.getItem('token');
-    const res = await axios.get('https://backendelevante-production.up.railway.app/api/reviews/platform', {
+    const res = await axios.get('http://localhost:5000/api/reviews/platform', {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (Array.isArray(res.data)) return res.data;
@@ -47,7 +47,7 @@ export const fetchReviews = createAsyncThunk('feedback/fetchReviews', async (_, 
 export const updateReportStatus = createAsyncThunk('feedback/updateReportStatus', async ({ id, status }, { rejectWithValue }) => {
   try {
     const token = localStorage.getItem('token');
-    const res = await axios.patch(`https://backendelevante-production.up.railway.app/api/reports/${id}`, { status }, {
+    const res = await axios.patch(`http://localhost:5000/api/reports/${id}`, { status }, {
       headers: { Authorization: `Bearer ${token}` }
     });
     return res.data;
@@ -60,7 +60,7 @@ export const updateReportStatus = createAsyncThunk('feedback/updateReportStatus'
 export const deletePlatformReview = createAsyncThunk('feedback/deletePlatformReview', async (id, { rejectWithValue }) => {
   try {
     const token = localStorage.getItem('token');
-    await axios.delete(`https://backendelevante-production.up.railway.app/api/reviews/platform/${id}`, {
+    await axios.delete(`http://localhost:5000/api/reviews/platform/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     return { id };
@@ -73,7 +73,7 @@ export const deletePlatformReview = createAsyncThunk('feedback/deletePlatformRev
 export const restorePlatformReview = createAsyncThunk('feedback/restorePlatformReview', async (id, { rejectWithValue }) => {
   try {
     const token = localStorage.getItem('token');
-    await axios.patch(`https://backendelevante-production.up.railway.app/api/reviews/platform/${id}/restore`, {}, {
+    await axios.patch(`http://localhost:5000/api/reviews/platform/${id}/restore`, {}, {
       headers: { Authorization: `Bearer ${token}` }
     });
     return { id };
