@@ -341,7 +341,7 @@ export default function AdminUsers() {
 
   const fetchUsers = () => {
     const token = localStorage.getItem('token');
-    axios.get('http://localhost:5000/api/users/all', {
+    axios.get('https://backendelevante-production.up.railway.app/api/users/all', {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => setUsers(res.data))
@@ -425,12 +425,12 @@ export default function AdminUsers() {
         setShowBanModal(true);
         return;
       } else if (action === 'unban') {
-        await axios.put(`http://localhost:5000/api/users/${userId}/unblock`, {}, {
+        await axios.put(`https://backendelevante-production.up.railway.app/api/users/${userId}/unblock`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showNotification('User unblocked', 'success');
       } else if (action === 'approve') {
-        await axios.put(`http://localhost:5000/api/users/${userId}/status`, { action: 'approve' }, {
+        await axios.put(`https://backendelevante-production.up.railway.app/api/users/${userId}/status`, { action: 'approve' }, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showNotification('User approved', 'success');
@@ -450,7 +450,7 @@ export default function AdminUsers() {
     const token = localStorage.getItem('token');
     if (!banReason) return showNotification('Block reason is required', 'warning');
     try {
-      await axios.put(`http://localhost:5000/api/users/${banUserId}/block`, { blockReason: banReason }, {
+      await axios.put(`https://backendelevante-production.up.railway.app/api/users/${banUserId}/block`, { blockReason: banReason }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showNotification('User blocked', 'success');
@@ -472,7 +472,7 @@ export default function AdminUsers() {
     const token = localStorage.getItem('token');
     if (!deleteReason) return showNotification('Delete reason is required', 'warning');
     try {
-      await axios.delete(`http://localhost:5000/api/users/delete`, {
+      await axios.delete(`https://backendelevante-production.up.railway.app/api/users/delete`, {
         headers: { Authorization: `Bearer ${token}` },
         data: { userId: deleteUserId, reason: deleteReason }
       });
@@ -491,7 +491,7 @@ export default function AdminUsers() {
     const token = localStorage.getItem('token');
     if (!rejectReason) return showNotification('Rejection reason is required', 'warning');
     try {
-      await axios.put(`http://localhost:5000/api/users/${rejectUserId}/status`, { action: 'reject', rejectionReason: rejectReason }, {
+      await axios.put(`https://backendelevante-production.up.railway.app/api/users/${rejectUserId}/status`, { action: 'reject', rejectionReason: rejectReason }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showNotification('User rejected', 'success');
@@ -667,11 +667,11 @@ export default function AdminUsers() {
       const token = localStorage.getItem('token');
       const userId = selectedUser._id || selectedUser.id;
       // Fetch projects count
-      axios.get(`http://localhost:5000/api/businesses?owner=${userId}`, { headers: { Authorization: `Bearer ${token}` } })
+      axios.get(`https://backendelevante-production.up.railway.app/api/businesses?owner=${userId}`, { headers: { Authorization: `Bearer ${token}` } })
         .then(res => setProjectsCount(Array.isArray(res.data) ? res.data.length : '-'))
         .catch(() => setProjectsCount('-'));
       // Fetch login count
-      axios.get(`http://localhost:5000/api/activity-logs?userId=${userId}&actionType=login`, { headers: { Authorization: `Bearer ${token}` } })
+      axios.get(`https://backendelevante-production.up.railway.app/api/activity-logs?userId=${userId}&actionType=login`, { headers: { Authorization: `Bearer ${token}` } })
         .then(res => setLoginCount(Array.isArray(res.data) ? res.data.length : '-'))
         .catch(() => setLoginCount('-'));
       setDetailsLoading(false);

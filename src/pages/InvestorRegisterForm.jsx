@@ -149,7 +149,7 @@ export default function InvestorRegisterForm({ oldData = {}, feedback = {}, reje
         });
       }
       await axios.post(
-        "http://localhost:5000/api/users/register",
+        "https://backendelevante-production.up.railway.app/api/users/register",
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );

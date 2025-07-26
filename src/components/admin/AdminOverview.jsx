@@ -69,7 +69,7 @@ export default function AdminOverview() {
       const token = localStorage.getItem('token');
       try {
         // Get all users
-        const usersRes = await axios.get('http://localhost:5000/api/users/all', {
+        const usersRes = await axios.get('https://backendelevante-production.up.railway.app/api/users/all', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const users = usersRes.data;
@@ -78,7 +78,7 @@ export default function AdminOverview() {
         const pendingApprovals = users.filter(u => u.status === 'pending').length;
 
         // Get all requests
-        const requestsRes = await axios.get('http://localhost:5000/api/requests', {
+        const requestsRes = await axios.get('https://backendelevante-production.up.railway.app/api/requests', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const requests = requestsRes.data;
@@ -87,13 +87,13 @@ export default function AdminOverview() {
         const completedRequests = requests.filter(r => r.status === 'completed').length;
 
         // Get all offers
-        const offersRes = await axios.get('http://localhost:5000/api/supplier-offers', {
+        const offersRes = await axios.get('https://backendelevante-production.up.railway.app/api/supplier-offers', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const totalOffers = offersRes.data.length;
 
         // Get active phases (example: count of businesses with active phase)
-        const businessesRes = await axios.get('http://localhost:5000/api/businesses', {
+        const businessesRes = await axios.get('https://backendelevante-production.up.railway.app/api/businesses', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const activePhases = businessesRes.data.filter(b => b.phase === 'active').length;
@@ -111,7 +111,7 @@ export default function AdminOverview() {
         });
 
         // Fetch recent activity logs
-        const activityRes = await axios.get('http://localhost:5000/api/activity-logs', {
+        const activityRes = await axios.get('https://backendelevante-production.up.railway.app/api/activity-logs', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setActivities(activityRes.data.slice(0, 5)); // Show latest 5 activities

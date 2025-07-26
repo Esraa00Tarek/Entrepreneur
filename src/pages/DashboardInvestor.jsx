@@ -122,21 +122,21 @@ const InvestorDashboard = () => {
     const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };
     // جلب المشاريع
-    axios.get('http://localhost:5000/api/businesses/all', { headers })
+    axios.get('https://backendelevante-production.up.railway.app/api/businesses/all', { headers })
       .then(res => {
         const businesses = res.data.businesses ?? res.data.data ?? [];
         setOverviewStats(prev => ({ ...prev, projects: businesses.length }));
       })
       .catch(() => {});
     // جلب الطلبات
-    axios.get('http://localhost:5000/api/requests', { headers })
+    axios.get('https://backendelevante-production.up.railway.app/api/requests', { headers })
       .then(res => {
         const requests = res.data.requests ?? res.data.data ?? [];
         setOverviewStats(prev => ({ ...prev, requests: requests.length }));
       })
       .catch(() => {});
     // جلب الصفقات الخاصة بالمستثمر
-    axios.get('http://localhost:5000/api/deals/my', { headers })
+    axios.get('https://backendelevante-production.up.railway.app/api/deals/my', { headers })
       .then(res => {
         const deals = res.data.deals ?? res.data.data ?? [];
         const ongoing = deals.filter(d => d.status === 'ongoing').length;
@@ -161,7 +161,7 @@ const InvestorDashboard = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };
-    axios.get('http://localhost:5000/api/businesses/all', { headers })
+    axios.get('https://backendelevante-production.up.railway.app/api/businesses/all', { headers })
       .then(res => {
         const businesses = res.data.businesses ?? res.data.data ?? [];
         setAllBusinesses(businesses);

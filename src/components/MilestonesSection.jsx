@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Calendar, FileText, Image, Download, Plus, TrendingUp, Clock, Target, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { Calendar, FileText, Image, Download, Plus, TrendingUp, Clock, Target, ChevronLeft, ChevronRight, Edit, Trash2, Users, Building2 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchMilestones } from '../redux/slices/milestonesSlice';
@@ -205,9 +205,16 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
     const fetchBusinesses = async () => {
       try {
         const token = localStorage.getItem('token');
-                 const res = await axios.get('http://localhost:5000/api/businesses/my', {
+        
+        // للمستثمرين: جلب جميع البزنسات، لرائد الأعمال: جلب البزنسات الخاصة به فقط
+        const endpoint = userRole === 'investor' 
+          ? 'http://localhost:5000/api/businesses/all' 
+          : 'http://localhost:5000/api/businesses/my';
+          
+        const res = await axios.get(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        
         // اعتبري كل بزنس هو project
         const businesses = res.data.businesses ?? res.data.data ?? [];
         // فلترة البزنسات الحقيقية فقط (اللي عندها _id)
@@ -219,7 +226,9 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
             stage: biz.stage || 'Idea',
             startDate: biz.creationDate || biz.createdAt || '',
             progress: biz.progress ?? 0,
-            logs: []
+            logs: [],
+            owner: biz.ownerName || biz.owner || biz.founder || 'Unknown',
+            industry: biz.industry || biz.category || 'Unknown'
           }));
         setProjects(projectsFromBusinesses);
         if (projectsFromBusinesses.length > 0) {
@@ -229,12 +238,13 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
           setSelectedProjectId(null);
         }
       } catch (err) {
+        console.error('Error fetching businesses:', err);
         setProjects([]);
         setSelectedProjectId(null);
       }
     };
     fetchBusinesses();
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     if (selectedProjectId) {
@@ -398,9 +408,14 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
               </div>
               <div>
                 <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>
-                  Project Milestones
+                  {userRole === 'investor' ? 'Business Milestones' : 'Project Milestones'}
                 </h1>
-                <p className="text-gray-500 text-sm">Track your project progress and achievements</p>
+                <p className="text-gray-500 text-sm">
+                  {userRole === 'investor' 
+                    ? 'Track progress and achievements of businesses you\'re interested in' 
+                    : 'Track your project progress and achievements'
+                  }
+                </p>
               </div>
             </div>
             {projects.length > 1 && (
@@ -457,6 +472,20 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                       {project.name}
                     </h3>
                     
+                    {/* Show additional info for investors */}
+                    {userRole === 'investor' && (
+                      <div className="space-y-2 mb-3 text-sm opacity-80">
+                        <div className="flex items-center justify-center gap-1">
+                          <Users className="w-3 h-3" />
+                          <span className="font-medium">{project.owner}</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-1">
+                          <Building2 className="w-3 h-3" />
+                          <span className="font-medium">{project.industry}</span>
+                        </div>
+                      </div>
+                    )}
+                    
                     {project.startDate && (
                       <div className="flex items-center justify-center gap-2 mt-4 text-sm opacity-80">
                         <div className={`p-1 rounded-full ${
@@ -482,8 +511,15 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                   <div className="w-16 h-16 bg-gradient-to-br from-[#457B9D] to-[#1D3557] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Target className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold text-[#1D3557] mb-2">No projects yet</h3>
-                  <p className="text-gray-500">Add a project first to view milestones and track your progress.</p>
+                  <h3 className="text-xl font-semibold text-[#1D3557] mb-2">
+                    {userRole === 'investor' ? 'No businesses available' : 'No projects yet'}
+                  </h3>
+                  <p className="text-gray-500">
+                    {userRole === 'investor' 
+                      ? 'No businesses are currently available to view milestones.' 
+                      : 'Add a project first to view milestones and track your progress.'
+                    }
+                  </p>
                 </div>
               )}
             </div>
@@ -500,10 +536,13 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold" style={{ color: '#1D3557' }}>
-                    Project Progress
+                    {userRole === 'investor' ? 'Business Progress' : 'Project Progress'}
                   </h2>
                   <p className="text-gray-500 text-sm">
                     {selectedProject.name} - {selectedProject.stage} Stage
+                    {userRole === 'investor' && selectedProject.owner && (
+                      <span> • Owner: {selectedProject.owner}</span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -576,7 +615,7 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
           })}
         </div>
 
-        {/* Create Milestone Form */}
+        {/* Create Milestone Form - Only for entrepreneurs */}
         {selectedProjectId && selectedProject && userRole === 'entrepreneur' && selectedStage && (
           <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm mb-8">
             <h2 className="font-bold text-2xl mb-6 flex items-center gap-3" style={{ color: '#1D3557' }}>
@@ -800,15 +839,13 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                                 </div>
                               )}
                               
-                              {(userRole === 'entrepreneur' || userRole === 'investor') && (
-                                <button
-                                  className="w-full mt-3 flex items-center justify-center gap-2 text-sm text-white bg-[#457B9D] hover:bg-[#1D3557] font-medium py-2 px-4 rounded-lg transition-all duration-300"
-                                  onClick={() => handleFileDownload(file)}
-                                >
-                                  <Download className="w-4 h-4" />
-                                  Download
-                                </button>
-                              )}
+                              <button
+                                className="w-full mt-3 flex items-center justify-center gap-2 text-sm text-white bg-[#457B9D] hover:bg-[#1D3557] font-medium py-2 px-4 rounded-lg transition-all duration-300"
+                                onClick={() => handleFileDownload(file)}
+                              >
+                                <Download className="w-4 h-4" />
+                                Download
+                              </button>
                             </div>
                           );
                         })}
@@ -825,7 +862,12 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                   <Clock className="w-10 h-10 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold mb-3" style={{ color: '#1D3557' }}>No milestones for {selectedStage} stage</h3>
-                <p className="text-gray-600">Start tracking your project progress by adding your first milestone for this stage above.</p>
+                <p className="text-gray-600">
+                  {userRole === 'investor' 
+                    ? 'This business hasn\'t added any milestones for this stage yet.' 
+                    : 'Start tracking your project progress by adding your first milestone for this stage above.'
+                  }
+                </p>
               </div>
             )}
           </div>
