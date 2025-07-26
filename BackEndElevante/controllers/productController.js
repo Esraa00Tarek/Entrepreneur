@@ -7,7 +7,7 @@ export const getProductsBySupplier = async (req, res) => {
     if (!supplierId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'Invalid supplier ID format' });
     }
-    const products = await Product.find({ supplierId }).populate('supplierId', 'username fullName email');
+    const products = await Product.find({ supplierId });
     res.status(200).json(products);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -137,7 +137,7 @@ export const getProductById = async (req, res) => {
     if (!productId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'Invalid product ID format' });
     }
-    const product = await Product.findById(productId).populate('supplierId', 'username fullName email');
+    const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
@@ -167,7 +167,7 @@ export const filterProducts = async (req, res) => {
       query.supplierId = supplierId;
     }
 
-    const products = await Product.find(query).populate('supplierId', 'username fullName email');
+    const products = await Product.find(query);
     res.status(200).json(products);
   } catch (err) {
     console.error(err);

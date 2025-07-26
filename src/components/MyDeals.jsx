@@ -36,6 +36,12 @@ export default function MyDeals({ userRole = 'entrepreneur' }) {
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalDeals, setTotalDeals] = useState(0);
+  const [loadingDeals, setLoadingDeals] = useState(false);
 
   // Dummy deals for demo
   const [dummyStatus, setDummyStatus] = useState('pending');
@@ -68,14 +74,21 @@ export default function MyDeals({ userRole = 'entrepreneur' }) {
     const fetchBusinesses = async () => {
       setLoadingBusinesses(true);
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${BASE_URL}/api/businesses/my`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const businessesArr = (res.data.businesses ?? res.data.data ?? []).map(biz => ({ id: biz._id, name: biz.name }));
-        setBusinesses(businessesArr);
-        if (businessesArr.length > 0 && !selectedBusinessId) {
-          setSelectedBusinessId(businessesArr[0].id);
+        // Only fetch businesses if user is an entrepreneur
+        if (userRole === 'entrepreneur') {
+          const token = localStorage.getItem('token');
+          const res = await axios.get(`${BASE_URL}/api/deals/my`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const businessesArr = (res.data.businesses ?? res.data.data ?? []).map(biz => ({ id: biz._id, name: biz.name }));
+          setBusinesses(businessesArr);
+          if (businessesArr.length > 0 && !selectedBusinessId) {
+            setSelectedBusinessId(businessesArr[0].id);
+          }
+        } else {
+          // For non-entrepreneurs, set empty businesses array
+          setBusinesses([]);
+          setSelectedBusinessId('');
         }
       } catch {
         setBusinesses([]);
@@ -84,27 +97,44 @@ export default function MyDeals({ userRole = 'entrepreneur' }) {
       setLoadingBusinesses(false);
     };
     fetchBusinesses();
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     const fetchDeals = async () => {
+      setLoadingDeals(true);
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(`${BASE_URL}/api/deals/my`, {
           headers: { Authorization: `Bearer ${token}` },
+          params: {
+            page: currentPage,
+            limit: 1000 // عدد كبير جداً لجلب كل الديلز
+          }
         });
-        setDeals(res.data.data || res.data.deals || []);
+        setDeals((res.data.data || res.data.deals || [])
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        );
+        setTotalPages(res.data.pages || 1);
+        setTotalDeals(res.data.total || 0);
       } catch (err) {
         setDeals([]);
+        setTotalPages(1);
+        setTotalDeals(0);
       }
+      setLoadingDeals(false);
     };
     fetchDeals();
-  }, []);
+  }, [currentPage]);
 
   // فلترة الديلز حسب البزنس المختار
   const filteredDeals = selectedBusinessId
     ? deals.filter(deal => deal.relatedBusiness && (deal.relatedBusiness._id === selectedBusinessId || deal.relatedBusiness === selectedBusinessId))
     : deals;
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, sortBy, selectedBusinessId]);
 
   // تحديد الطرف الآخر في الديل
   const getOtherParticipant = (deal) => {
@@ -170,6 +200,13 @@ export default function MyDeals({ userRole = 'entrepreneur' }) {
     });
   };
 
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: '#EEF8F7' }}>
       <div className="px-4 md:px-8">
@@ -232,7 +269,7 @@ export default function MyDeals({ userRole = 'entrepreneur' }) {
 
           {/* Deals Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDeals.map((deal) => (
+            {!loadingDeals && filteredDeals.map((deal) => (
               <div key={deal._id} className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
                 {/* Deal Header */}
                 <div className="p-6 border-b border-gray-100">
@@ -276,6 +313,37 @@ export default function MyDeals({ userRole = 'entrepreneur' }) {
                   <div className="mt-4">
                     <p className="text-sm text-gray-600 line-clamp-2">{deal.description || ''}</p>
                   </div>
+                  {/* زر Accept Offer */}
+                  {userRole === 'entrepreneur' && deal.sourceType === 'offer' && deal.status !== 'confirmed' && deal.sourceId && (
+                    <button
+                      className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('token');
+                          await axios.patch(`${BASE_URL}/api/offers/${deal.sourceId}/accept`, {}, {
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+                          // بعد القبول، أعد تحميل الديلز
+                          setLoadingDeals(true);
+                          const res = await axios.get(`${BASE_URL}/api/deals/my`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                            params: { page: currentPage, limit: 6 }
+                          });
+                          setDeals((res.data.data || res.data.deals || [])
+                            .filter(d => d.sourceType === 'offer')
+                            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                          );
+                          setTotalPages(res.data.pages || 1);
+                          setTotalDeals(res.data.total || 0);
+                          setLoadingDeals(false);
+                        } catch (err) {
+                          alert('Failed to accept offer.');
+                        }
+                      }}
+                    >
+                      Accept Offer
+                    </button>
+                  )}
                 </div>
                 {/* Action Buttons */}
                 <div className="p-6 bg-gray-50">
@@ -306,9 +374,10 @@ export default function MyDeals({ userRole = 'entrepreneur' }) {
                 </div>
               </div>
             ))}
-            {filteredDeals.length === 0 && (
+            {filteredDeals.length === 0 && !loadingDeals && (
               <>
                 <div className="col-span-full text-center text-[#457B9D] font-semibold mb-4">
+                  No deals found
                 </div>
                 <div className="col-span-full flex flex-col sm:flex-row items-center justify-between mb-2 gap-2">
                   <div className="flex items-center gap-2">
@@ -458,6 +527,93 @@ export default function MyDeals({ userRole = 'entrepreneur' }) {
               </>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center mt-8 mb-4">
+              <div className="flex items-center space-x-2 bg-white rounded-lg shadow-md px-4 py-2">
+                {/* Previous Button */}
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || loadingDeals}
+                  className={`flex items-center px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    currentPage === 1 || loadingDeals
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-[#457B9D] hover:bg-[#457B9D] hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Previous
+                </button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        disabled={loadingDeals}
+                        className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-[#457B9D] text-white'
+                            : 'text-[#457B9D] hover:bg-[#457B9D] hover:text-white'
+                        } ${loadingDeals ? 'cursor-not-allowed' : ''}`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages || loadingDeals}
+                  className={`flex items-center px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    currentPage === totalPages || loadingDeals
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-[#457B9D] hover:bg-[#457B9D] hover:text-white'
+                  }`}
+                >
+                  Next
+                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loadingDeals && (
+            <div className="col-span-full flex justify-center items-center py-8">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 border-2 border-[#457B9D] border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-[#457B9D] font-medium">Loading deals...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Deal Count Info */}
+          {totalDeals > 0 && (
+            <div className="text-center text-sm text-[#457B9D] mt-4">
+              Showing {((currentPage - 1) * 6) + 1} to {Math.min(currentPage * 6, totalDeals)} of {totalDeals} deals
+            </div>
+          )}
         </div>
       </div>
       {/* Project Details Modal */}

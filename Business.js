@@ -30,8 +30,7 @@ const businessSchema = new mongoose.Schema({
     },
 
     location: {
-        country: String,
-        state: String,
+        governorate: String,
         city: String,
         address: String
     },
