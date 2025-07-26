@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Calendar, FileText, Image, Download, Plus, TrendingUp, Clock, Target, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, FileText, Image, Download, Plus, TrendingUp, Clock, Target, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchMilestones } from '../redux/slices/milestonesSlice';
+import { Progress } from '@/components/ui/progress';
 
 export default function MilestonesSection({ userRole = "entrepreneur" }) {
   const dispatch = useDispatch();
@@ -16,6 +17,11 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
   const [addErrors, setAddErrors] = useState({});
   const [error, setError] = useState(null);
   const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
+  const [progressValue, setProgressValue] = useState(0);
+  const [animatedProgress, setAnimatedProgress] = useState(0);
+  const [editingMilestone, setEditingMilestone] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '', stage: '' });
+  const [selectedStage, setSelectedStage] = useState(null);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const milestonesList = milestones || [];
@@ -25,6 +31,90 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
 
   const BASE_URL = 'http://localhost:5000';
 
+  // تعريف المراحل والنسب المئوية لكل مرحلة - فقط المراحل الموجودة
+  const STAGE_PROGRESS = {
+    'Idea': 0,
+    'MVP': 33,
+    'Launched': 66
+  };
+
+  // عدد الميلستونز المطلوبة لكل مرحلة
+  const MILESTONES_PER_STAGE = 4;
+
+  // المراحل المتاحة فقط
+  const businessStages = ["Idea", "MVP", "Launched"];
+
+  // حساب البروجرس بناءً على المرحلة والميلستونز
+  const calculateProgress = (stage, milestonesCount) => {
+    const baseProgress = STAGE_PROGRESS[stage] || 0;
+    const milestonesProgress = Math.min((milestonesCount / MILESTONES_PER_STAGE) * 33, 33);
+    return Math.min(baseProgress + milestonesProgress, 100);
+  };
+
+  // التحقق من إمكانية إضافة ميلستون للمرحلة المحددة
+  const canAddMilestoneToStage = (stage) => {
+    const stageMilestones = milestonesList.filter(m => m.stageUpdate === stage);
+    return stageMilestones.length < MILESTONES_PER_STAGE;
+  };
+
+  // الحصول على عدد الميلستونز المتبقية للمرحلة
+  const getRemainingMilestonesForStage = (stage) => {
+    const stageMilestones = milestonesList.filter(m => m.stageUpdate === stage);
+    return MILESTONES_PER_STAGE - stageMilestones.length;
+  };
+
+  // الحصول على الميلستونز للمرحلة المحددة
+  const getMilestonesForStage = (stage) => {
+    return milestonesList.filter(m => m.stageUpdate === stage);
+  };
+
+  // تحديث البروجرس في الباك إند
+  const updateProgressInBackend = async (businessId, progress) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `${BASE_URL}/api/businesses/${businessId}`,
+        { progress },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+    } catch (err) {
+      console.error('Error updating progress:', err);
+    }
+  };
+
+  // تحديث مرحلة المشروع في الباك إند
+  const updateProjectStage = async (businessId, newStage) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `${BASE_URL}/api/businesses/${businessId}`,
+        { stage: newStage },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      // تحديث المشاريع المحلية
+      setProjects(prev => prev.map(p => 
+        p.id === businessId ? { ...p, stage: newStage } : p
+      ));
+    } catch (err) {
+      console.error('Error updating project stage:', err);
+    }
+  };
+
+  // حساب البروجرس الحالي للمشروع المحدد
+  const getCurrentProgress = () => {
+    if (!selectedProject || !milestonesList) return 0;
+    
+    const currentStage = selectedProject.stage;
+    const stageMilestones = milestonesList.filter(m => m.stageUpdate === currentStage);
+    const milestonesCount = stageMilestones.length;
+    
+    return calculateProgress(currentStage, milestonesCount);
+  };
+
   const getFileUrl = (file) => {
     if (!file) return '';
     if (typeof file === 'string') return file;
@@ -32,6 +122,83 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
     if (file instanceof Blob) return URL.createObjectURL(file);
     return '';
   };
+
+  // تحرير الميلستون
+  const handleEditMilestone = (milestone) => {
+    setEditingMilestone(milestone);
+    setEditForm({
+      title: milestone.title,
+      description: milestone.description,
+      stage: milestone.stageUpdate
+    });
+  };
+
+  // حفظ التعديلات
+  const handleSaveEdit = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `${BASE_URL}/api/milestones/${editingMilestone._id}`,
+        editForm,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      setEditingMilestone(null);
+      setEditForm({ title: '', description: '', stage: '' });
+      dispatch(fetchMilestones(selectedProjectId));
+      
+      // تحديث البروجرس
+      setTimeout(() => {
+        const newProgress = getCurrentProgress();
+        setProgressValue(newProgress);
+        updateProgressInBackend(selectedProjectId, newProgress);
+      }, 1000);
+    } catch (err) {
+      console.error('Error updating milestone:', err);
+      alert('Error updating milestone: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // حذف الميلستون
+  const handleDeleteMilestone = async (milestoneId) => {
+    if (!confirm('Are you sure you want to delete this milestone?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(
+        `${BASE_URL}/api/milestones/${milestoneId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      dispatch(fetchMilestones(selectedProjectId));
+      
+      // تحديث البروجرس
+      setTimeout(() => {
+        const newProgress = getCurrentProgress();
+        setProgressValue(newProgress);
+        updateProgressInBackend(selectedProjectId, newProgress);
+      }, 1000);
+    } catch (err) {
+      console.error('Error deleting milestone:', err);
+      alert('Error deleting milestone: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // التنقل بين المراحل
+  const handleStageClick = (stage) => {
+    setSelectedStage(stage);
+  };
+
+  // إعادة تعيين المرحلة المحددة عند تغيير المشروع
+  useEffect(() => {
+    if (selectedProject) {
+      setSelectedStage(selectedProject.stage);
+    }
+  }, [selectedProject]);
 
   useEffect(() => {
     // جلب البزنسات من الباك اند
@@ -49,7 +216,7 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
           .map(biz => ({
             id: biz._id,
             name: biz.name,
-            stage: biz.status || 'Idea',
+            stage: biz.stage || 'Idea',
             startDate: biz.creationDate || biz.createdAt || '',
             progress: biz.progress ?? 0,
             logs: []
@@ -75,13 +242,39 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
     }
   }, [dispatch, selectedProjectId]);
 
+  // تحديث البروجرس عند تغيير المشروع أو الميلستونز
+  useEffect(() => {
+    if (selectedProject && milestonesList) {
+      const currentProgress = getCurrentProgress();
+      setProgressValue(currentProgress);
+      
+      // تحديث البروجرس في الباك إند
+      updateProgressInBackend(selectedProject.id, currentProgress);
+    }
+  }, [selectedProject, milestonesList]);
+
+  // تحريك البروجرس بار
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimatedProgress(progressValue);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [progressValue]);
+
   const handleAddLog = async () => {
     const errors = {};
     if (!newLog.title.trim()) errors.title = 'Title is required';
     if (!newLog.stage) errors.stage = 'Stage is required';
     if (!newLog.description || newLog.description.trim().length < 20) errors.description = 'Description is required and must be at least 20 characters';
+    
+    // التحقق من عدد الميلستونز في المرحلة
+    if (!canAddMilestoneToStage(newLog.stage)) {
+      errors.stage = `Cannot add more than ${MILESTONES_PER_STAGE} milestones to ${newLog.stage} stage`;
+    }
+    
     setAddErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    
     try {
       const formData = new FormData();
       formData.append('title', newLog.title);
@@ -106,6 +299,13 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
       setNewLog({ title: '', description: '', files: [], stage: '' });
       setAddErrors({});
       dispatch(fetchMilestones(selectedProjectId));
+      
+      // تحديث البروجرس بعد إضافة الميلستون
+      setTimeout(() => {
+        const newProgress = getCurrentProgress();
+        setProgressValue(newProgress);
+        updateProgressInBackend(selectedProjectId, newProgress);
+      }, 1000);
     } catch (err) {
       console.log('Milestone add error:', err.response?.data || err.message);
       alert('Error: ' + (err.response?.data?.message || err.message));
@@ -134,27 +334,9 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
     return name && name.match(/\.(jpg|jpeg|png|gif)$/i);
   };
 
-  const MILESTONES_TARGET = 4;
-  const getProgress = (logs) => {
-    const completed = logs.length;
-    return completed > 0 ? Math.min(Math.round((completed / MILESTONES_TARGET) * 100), 100) : 0;
-  };
-
-  const getProgressWithFiles = (logs) => {
-    if (!logs || logs.length === 0) return 0;
-    const withFiles = logs.filter(log => log.files && log.files.length > 0).length;
-    return Math.min(Math.round((withFiles / MILESTONES_TARGET) * 100), 100);
-  };
-
   const getStageColor = () => {
     return "bg-[#A8DADC] text-[#1D3557] border-[#A8DADC]";
   };
-
-  const businessStages = [
-    "Idea",
-    "MVP",
-    "Launched"
-  ];
 
   // Navigation functions for project carousel
   const handlePrevProject = () => {
@@ -199,6 +381,9 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
       });
     };
   }, [selectedProject?.logs]);
+
+  // الحصول على الميلستونز للمرحلة المحددة
+  const currentStageMilestones = selectedStage ? getMilestonesForStage(selectedStage) : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -272,14 +457,6 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                       {project.name}
                     </h3>
                     
-                    <span className={`inline-block text-sm px-4 py-2 rounded-full border font-medium transition-all duration-300 ${
-                      selectedProjectId === project.id 
-                        ? 'bg-white/20 text-white border-white/30 backdrop-blur-sm' 
-                        : 'bg-gradient-to-r from-[#A8DADC] to-[#457B9D]/20 text-[#1D3557] border-[#A8DADC]/50'
-                    }`}>
-                      {project.stage}
-                    </span>
-                    
                     {project.startDate && (
                       <div className="flex items-center justify-center gap-2 mt-4 text-sm opacity-80">
                         <div className={`p-1 rounded-full ${
@@ -313,14 +490,100 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
           </div>
         </div>
 
+        {/* Project Progress Bar */}
+        {selectedProjectId && selectedProject && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#457B9D] to-[#1D3557] rounded-2xl flex items-center justify-center shadow-lg">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold" style={{ color: '#1D3557' }}>
+                    Project Progress
+                  </h2>
+                  <p className="text-gray-500 text-sm">
+                    {selectedProject.name} - {selectedProject.stage} Stage
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold" style={{ color: '#457B9D' }}>
+                  {Math.round((milestonesList.length / 12) * 100)}%
+                </div>
+                <div className="text-sm text-gray-500">
+                  {milestonesList.length} of 12 milestones completed
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="relative">
+                <Progress 
+                  value={(milestonesList.length / 12) * 100} 
+                  className="h-4 bg-gray-100 rounded-full overflow-hidden"
+                  style={{
+                    background: `linear-gradient(90deg, #457B9D ${(milestonesList.length / 12) * 100}%, #E0E7EF ${(milestonesList.length / 12) * 100}%)`
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stage Navigation Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 mb-8">
+          {businessStages.map((stage) => {
+            const stageMilestones = milestonesList.filter(m => m.stageUpdate === stage);
+            const isCurrentStage = selectedProject && selectedProject.stage === stage;
+            const isCompleted = stageMilestones.length >= MILESTONES_PER_STAGE;
+            const isPreviousStage = selectedProject && businessStages.indexOf(stage) < businessStages.indexOf(selectedProject.stage);
+            const isSelected = selectedStage === stage;
+            return (
+              <button
+                key={stage}
+                onClick={() => handleStageClick(stage)}
+                className={`p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:shadow-md ${
+                  isSelected
+                    ? 'border-[#457B9D] bg-[#457B9D]/10 shadow-md' 
+                    : isCompleted || isPreviousStage
+                      ? 'border-green-200 bg-green-50 hover:border-green-300' 
+                      : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-3 h-3 rounded-full ${
+                    isSelected
+                      ? 'bg-[#457B9D]' 
+                      : isCompleted || isPreviousStage
+                        ? 'bg-green-500' 
+                        : 'bg-gray-300'
+                  }`} />
+                  <span className={`text-sm font-medium ${
+                    isSelected
+                      ? 'text-[#457B9D]' 
+                      : isCompleted || isPreviousStage
+                        ? 'text-green-700' 
+                        : 'text-gray-500'
+                  }`}>
+                    {stage}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  {stageMilestones.length}/{MILESTONES_PER_STAGE} milestones
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Create Milestone Form */}
-        {selectedProjectId && selectedProject && userRole === 'entrepreneur' && (
+        {selectedProjectId && selectedProject && userRole === 'entrepreneur' && selectedStage && (
           <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm mb-8">
             <h2 className="font-bold text-2xl mb-6 flex items-center gap-3" style={{ color: '#1D3557' }}>
               <div className="w-10 h-10 bg-[#457B9D] rounded-xl flex items-center justify-center">
                 <Plus className="w-5 h-5 text-white" />
               </div>
-              Create New Milestone
+              Create New Milestone - {selectedStage} Stage
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -334,17 +597,30 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                 />
                 {addErrors.title && <p className="text-red-500 text-sm mt-1">{addErrors.title}</p>}
               </div>
+              <div>
               <select
                 value={newLog.stage}
                 onChange={(e) => setNewLog({ ...newLog, stage: e.target.value })}
                 className={`px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#457B9D] focus:border-transparent bg-white transition-all text-gray-900 ${addErrors.stage ? 'border-red-500' : 'border-gray-200'}`}
               >
                 <option value="">Select business stage</option>
-                {businessStages.map((stage, idx) => (
-                  <option key={idx} value={stage}>{stage}</option>
-                ))}
+                  {businessStages.map((stage, idx) => {
+                    const stageMilestones = milestonesList.filter(m => m.stageUpdate === stage);
+                    const canAdd = stageMilestones.length < MILESTONES_PER_STAGE;
+                    
+                    return (
+                      <option 
+                        key={idx} 
+                        value={stage}
+                        disabled={!canAdd}
+                      >
+                        {stage} ({stageMilestones.length}/{MILESTONES_PER_STAGE}) {!canAdd ? '- Full' : ''}
+                      </option>
+                    );
+                  })}
               </select>
               {addErrors.stage && <p className="text-red-500 text-sm mt-1">{addErrors.stage}</p>}
+              </div>
             </div>
             
             <div className="mb-6">
@@ -373,18 +649,32 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
               </div>
               <button
                 onClick={handleAddLog}
-                className="bg-[#457B9D] text-white px-8 py-3 rounded-xl shadow-md hover:bg-[#1D3557] transition-all duration-300 font-medium flex items-center gap-2"
+                disabled={!canAddMilestoneToStage(selectedStage)}
+                className={`px-8 py-3 rounded-xl shadow-md transition-all duration-300 font-medium flex items-center gap-2 ${
+                  canAddMilestoneToStage(selectedStage)
+                    ? 'bg-[#457B9D] text-white hover:bg-[#1D3557]'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 <Plus className="w-5 h-5" />
-                Add Milestone
+                Add Milestone ({getRemainingMilestonesForStage(selectedStage)} remaining)
               </button>
             </div>
           </div>
         )}
 
         {/* Milestones Timeline - Vertical Layout */}
-        {selectedProjectId && selectedProject && (
+        {selectedProjectId && selectedProject && selectedStage && (
           <div className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold" style={{ color: '#1D3557' }}>
+                {selectedStage} Stage Milestones ({currentStageMilestones.length}/{MILESTONES_PER_STAGE})
+              </h2>
+              {currentStageMilestones.length === 0 && (
+                <p className="text-gray-500">No milestones for this stage yet.</p>
+              )}
+            </div>
+            
             {milestonesLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <div className="w-16 h-16 border-4 border-[#457B9D]/30 border-t-[#457B9D] rounded-full animate-spin mb-6"></div>
@@ -395,21 +685,85 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
               <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
                 <div className="text-red-600 font-medium">{error}</div>
               </div>
-            ) : milestonesList.length > 0 ? (
-              milestonesList.map((log, idx) => (
+            ) : currentStageMilestones.length > 0 ? (
+              currentStageMilestones.map((log, idx) => (
                 <div
                   key={idx}
                   data-idx={idx}
                   ref={el => logRefs.current[idx] = el}
                   className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm transition-all duration-300 hover:shadow-md"
                 >
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
                     <div className="p-2 bg-[#457B9D] rounded-full">
                       <Calendar className="w-4 h-4 text-white" />
                     </div>
                     <span className="text-sm text-gray-600 font-medium">{log.date}</span>
+                      <span className="px-3 py-1 bg-[#A8DADC] text-[#1D3557] rounded-full text-xs font-medium">
+                        {log.stageUpdate}
+                      </span>
+                    </div>
+                    
+                    {userRole === 'entrepreneur' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditMilestone(log)}
+                          className="p-2 text-[#457B9D] hover:bg-[#457B9D]/10 rounded-lg transition-colors"
+                          title="Edit milestone"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMilestone(log._id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete milestone"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
+                  {editingMilestone && editingMilestone._id === log._id ? (
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        value={editForm.title}
+                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#457B9D] focus:border-transparent"
+                      />
+                      <textarea
+                        value={editForm.description}
+                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#457B9D] focus:border-transparent"
+                      />
+                      <select
+                        value={editForm.stage}
+                        disabled
+                        className="px-4 py-3 border border-gray-200 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed"
+                      >
+                        {businessStages.map((stage, idx) => (
+                          <option key={idx} value={stage}>{stage}</option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSaveEdit}
+                          className="px-4 py-2 bg-[#457B9D] text-white rounded-lg hover:bg-[#1D3557] transition-colors"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingMilestone(null)}
+                          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   <h3 className="font-bold text-2xl mb-4" style={{ color: '#1D3557' }}>{log.title}</h3>
                   <p className="text-gray-700 whitespace-pre-line leading-relaxed mb-6">{log.description}</p>
                   
@@ -460,6 +814,8 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                         })}
                       </div>
                     </div>
+                      )}
+                    </>
                   )}
                 </div>
               ))
@@ -468,8 +824,8 @@ export default function MilestonesSection({ userRole = "entrepreneur" }) {
                 <div className="w-20 h-20 bg-[#457B9D] rounded-full flex items-center justify-center mx-auto mb-6">
                   <Clock className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3" style={{ color: '#1D3557' }}>No milestones yet</h3>
-                <p className="text-gray-600">Start tracking your project progress by adding your first milestone above.</p>
+                <h3 className="text-xl font-semibold mb-3" style={{ color: '#1D3557' }}>No milestones for {selectedStage} stage</h3>
+                <p className="text-gray-600">Start tracking your project progress by adding your first milestone for this stage above.</p>
               </div>
             )}
           </div>

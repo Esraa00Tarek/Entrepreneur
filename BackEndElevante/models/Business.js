@@ -66,26 +66,17 @@ const businessSchema = new mongoose.Schema({
         }
     }],
 
-    status: {
-        type: String,
-        default: 'Idea' // no enum
-    },
-
-    statusReason: {
-        type: String,
-        default: ''
-    },
-
-    milestones: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Milestone'
-    }],
     progress: {
         type: Number,
         default: 0,
         min: 0,
         max: 100
-      },
+    },
+    stage: {
+        type: String,
+        enum: ['Idea', 'MVP', 'Launched'],
+        default: 'Idea'
+    },
     tags: [String],
     isDeleted: { type: Boolean, default: false },
     createdAt: {

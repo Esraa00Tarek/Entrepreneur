@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +69,7 @@ const MyBusiness = () => {
   const [showNotification, setShowNotification] = useState(false);
   const [animatedValues, setAnimatedValues] = useState({ completion: 0 });
   const [showAddModal, setShowAddModal] = useState(false);
+  const [milestones, setMilestones] = useState([]);
   const [newBusiness, setNewBusiness] = useState({
     name: '',
     category: '', // بدل type
@@ -100,10 +101,81 @@ const MyBusiness = () => {
   // Dropdown state
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  // Calculate progress based on milestones (same logic as MilestonesSection)
+  const calculateProgress = (stage, milestonesCount) => {
+    const STAGE_PROGRESS = {
+      'Idea': 0,
+      'MVP': 33,
+      'Launched': 66
+    };
+    const MILESTONES_PER_STAGE = 4;
+    const baseProgress = STAGE_PROGRESS[stage] || 0;
+    const milestonesProgress = Math.min((milestonesCount / MILESTONES_PER_STAGE) * 33, 33);
+    return Math.min(baseProgress + milestonesProgress, 100);
+  };
+
+  // Calculate overall progress for all stages
+  const TOTAL_STAGES = 3;
+  const MILESTONES_PER_STAGE = 4;
+  const TOTAL_MILESTONES = TOTAL_STAGES * MILESTONES_PER_STAGE;
+
+  const calculateOverallProgress = (milestonesCount) => {
+    return Math.min((milestonesCount / TOTAL_MILESTONES) * 100, 100);
+  };
+
+  // Fetch all milestones for the user by getting milestones for each business
+  const fetchMilestones = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      let allMilestones = [];
+      
+      // Fetch milestones for each business
+      for (const business of businesses) {
+        try {
+          const res = await axios.get(`${BASE_URL}/api/milestones/business/${business._id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const businessMilestones = res.data.data || [];
+          // Add businessId to each milestone for filtering
+          const milestonesWithBusinessId = businessMilestones.map(milestone => ({
+            ...milestone,
+            businessId: business._id
+          }));
+          allMilestones = [...allMilestones, ...milestonesWithBusinessId];
+        } catch (err) {
+          console.error(`Error fetching milestones for business ${business._id}:`, err);
+        }
+      }
+      
+      console.log('Fetched all milestones:', allMilestones);
+      setMilestones(allMilestones);
+    } catch (err) {
+      console.error('Error fetching milestones:', err);
+      setMilestones([]);
+    }
+  }, [businesses]);
+
   // Animation for completion percentage
   useEffect(() => {
     const animateCompletion = () => {
-      const targetCompletion = selectedBusiness?.progress || 0;
+      // Use milestones-based progress calculation if milestones exist
+      let targetCompletion = selectedBusiness?.progress || 0;
+      
+      // If we have milestones data, calculate overall progress based on all milestones for the selected business
+      if (milestones && milestones.length > 0 && selectedBusiness) {
+        // Filter milestones for the current selected business
+        const businessMilestones = milestones.filter(m => m.businessId === selectedBusiness._id);
+        targetCompletion = calculateOverallProgress(businessMilestones.length);
+        console.log('Selected business:', selectedBusiness._id);
+        console.log('Business milestones count:', businessMilestones.length);
+        console.log('Target completion:', targetCompletion);
+        console.log('All milestones for this business:', businessMilestones);
+      } else {
+        console.log('No milestones found or milestones array is empty for business:', selectedBusiness?._id);
+      }
+      
+      console.log('Final target completion:', targetCompletion);
+      
       let current = 0;
       const increment = targetCompletion / 50;
       const timer = setInterval(() => {
@@ -116,7 +188,7 @@ const MyBusiness = () => {
       }, 20);
     };
     setTimeout(animateCompletion, 100);
-  }, [selectedBusiness]);
+  }, [selectedBusiness, milestones]);
 
   useEffect(() => {
     dispatch(fetchBusinesses());
@@ -126,11 +198,15 @@ const MyBusiness = () => {
     if (businesses && businesses.length > 0) {
       setSelectedBusiness(businesses[0]);
       setEditableData(businesses[0]);
-        } else {
-          setSelectedBusiness(null);
-          setEditableData(null);
-        }
-  }, [businesses]);
+      // Fetch all milestones
+      console.log('Fetching all milestones');
+      fetchMilestones();
+    } else {
+      setSelectedBusiness(null);
+      setEditableData(null);
+      setMilestones([]);
+    }
+  }, [businesses, fetchMilestones]);
 
   // Handle business switch
   const handleBusinessSwitch = async (businessId) => {
@@ -142,6 +218,7 @@ const MyBusiness = () => {
       setSelectedBusiness(res.data.business);
       setEditableData(res.data.business);
       setIsEditing(false);
+      // No need to fetch milestones again as we already have all milestones
     } catch (err) {
       // يمكنك عرض رسالة خطأ هنا
     }
@@ -506,25 +583,33 @@ const MyBusiness = () => {
           </div>
         )}
         {/* Tabs for Business Details (Business Info & Connected Partners) */}
+        <Card className="border-0 shadow-xl">
         <Tabs defaultValue="business-info" className="space-y-6">
-          <TabsList className="grid grid-cols-2 gap-4 bg-transparent">
-            <TabsTrigger value="business-info" className="bg-white shadow-sm rounded-lg data-[state=active]:bg-[#457B9D] data-[state=active]:text-white">
+            <TabsList className="bg-white rounded-xl shadow-sm border border-gray-200 p-1 grid grid-cols-2 gap-0">
+              <TabsTrigger 
+                value="business-info" 
+                className="flex-1 px-2 py-3 text-sm font-medium rounded-lg transition-all duration-200 data-[state=active]:bg-[#457B9D] data-[state=active]:text-white data-[state=inactive]:text-gray-700 data-[state=inactive]:bg-white data-[state=inactive]:hover:bg-[#F1FAEE]"
+              >
+                <Building2 className="w-4 h-4 inline mr-2" />
               Business Info
             </TabsTrigger>
-            <TabsTrigger value="partners" className="bg-white shadow-sm rounded-lg data-[state=active]:bg-[#457B9D] data-[state=active]:text-white">
+              <TabsTrigger 
+                value="partners" 
+                className="flex-1 px-2 py-3 text-sm font-medium rounded-lg transition-all duration-200 data-[state=active]:bg-[#457B9D] data-[state=active]:text-white data-[state=inactive]:text-gray-700 data-[state=inactive]:bg-white data-[state=inactive]:hover:bg-[#F1FAEE]"
+              >
+                <Users className="w-4 h-4 inline mr-2" />
               Connected Partners
             </TabsTrigger>
           </TabsList>
           {/* Business Info Tab */}
           <TabsContent value="business-info">
-            <Card className="border-0 shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[#457B9D] to-[#1D3557] text-white">
                 <CardTitle className="flex items-center gap-2">
                   Business Info
                 </CardTitle>
                 <p className="text-blue-100">View and edit your business details</p>
               </CardHeader>
-              <CardContent className="p-8 bg-white">
+              <div className="p-8 bg-white">
                 {selectedBusiness ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     {/* Business Name */}
@@ -577,15 +662,20 @@ const MyBusiness = () => {
                         )}
                       </div>
                     )}
-                    {/* Progress */}
+                                        {/* Progress */}
                     {selectedBusiness.progress !== undefined && (
                       <div>
                         <Label className="text-xs font-bold text-[#1D3557] uppercase tracking-wider">Progress</Label>
-                          <div className="mt-1 flex items-center gap-2">
-                            <Progress value={selectedBusiness.progress} className="h-2 w-full max-w-[120px]" />
-                            <span className="text-xs text-gray-600">{selectedBusiness.progress ? selectedBusiness.progress.toFixed(1) : 0}%</span>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Progress value={animatedValues.completion} className="h-2 w-full max-w-[120px]" style={{ background: `linear-gradient(90deg, #457B9D ${animatedValues.completion}%, #E0E7EF ${animatedValues.completion}%)` }} />
+                          <span className="text-xs text-gray-600">{Math.round(animatedValues.completion)}%</span>
+                        </div>
+                        {milestones && milestones.length > 0 && selectedBusiness && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {milestones.filter(m => m.businessId === selectedBusiness._id).length}/{TOTAL_MILESTONES} milestones completed
                           </div>
-                    </div>
+                        )}
+                      </div>
                     )}
                     {/* Created Date */}
                     {(selectedBusiness.creationDate || selectedBusiness.createdAt) && (
@@ -797,12 +887,10 @@ const MyBusiness = () => {
                     </>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
           </TabsContent>
           {/* Connected Partners */}
           <TabsContent value="partners">
-            <Card className="border-0 shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[#457B9D] to-[#1D3557] text-white">
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-6 h-6 text-white" />
@@ -810,59 +898,59 @@ const MyBusiness = () => {
                 </CardTitle>
                 <p className="text-blue-100">Manage relationships for {selectedBusiness?.name}</p>
         </CardHeader>
-              <CardContent className="p-6 bg-white">
+              <div className="p-6 bg-white">
                 {selectedBusiness?.partners && selectedBusiness.partners.length > 0 ? (
-                  <div className="grid gap-4">
+  <div className="grid gap-4">
                     {selectedBusiness.partners.map(partner => (
-                      <div key={partner.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-all">
-                        <div className="flex items-center gap-4">
-                          <Avatar className="w-10 h-10">
-                            <AvatarImage src={partner.avatar} />
-                            <AvatarFallback><Users className="w-6 h-6" /></AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">{partner.name}</h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              {partner.type.toLowerCase().includes('investor') && (
-                                <span className="text-sm text-[#1D3557] font-medium">Investor</span>
-                              )}
-                              {partner.type.toLowerCase().includes('supplier') && (
-                                <span className="text-sm text-[#1D3557] font-medium">Supplier</span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600">Deal: {partner.dealValue} • Last Contact: {partner.lastContact}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-[#1D3557] border-[#1D3557] hover:bg-[#1D3557] hover:text-white"
-                            onClick={() => navigate(`/dashboard/entrepreneur/messages?partner=${partner.id}`)}
-                          >
-                            <MessageCircle className="w-4 h-4 mr-2" />
-                            Message
-                          </Button>
-                        </div>
-                  </div>
-                ))}
+      <div key={partner.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-all">
+        <div className="flex items-center gap-4">
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={partner.avatar} />
+            <AvatarFallback><Users className="w-6 h-6" /></AvatarFallback>
+          </Avatar>
+          <div>
+            <h4 className="font-semibold text-gray-900">{partner.name}</h4>
+            <div className="flex items-center gap-2 mt-1">
+              {partner.type.toLowerCase().includes('investor') && (
+                <span className="text-sm text-[#1D3557] font-medium">Investor</span>
+              )}
+              {partner.type.toLowerCase().includes('supplier') && (
+                <span className="text-sm text-[#1D3557] font-medium">Supplier</span>
+              )}
             </div>
-          ) : (
-                  <div className="text-center py-8">
-                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="mb-4 text-gray-500">No connected partners yet.</p>
-                    <Button
-                      className="bg-gradient-to-r from-[#457B9D] to-[#1D3557] text-white mx-auto flex items-center gap-2"
-                      onClick={() => navigate('/dashboard/entrepreneur?tab=marketplace')}
-                    >
-                      <Users className="w-4 h-4 mr-2" /> Add Partner
-                    </Button>
-                  </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-sm text-gray-600">Deal: {partner.dealValue} • Last Contact: {partner.lastContact}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-[#1D3557] border-[#1D3557] hover:bg-[#1D3557] hover:text-white"
+                            onClick={() => navigate(`/dashboard/entrepreneur/messages?partner=${partner.id}`)}
+          >
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Message
+          </Button>
+        </div>
+      </div>
+    ))}
+  </div>
+) : (
+  <div className="text-center py-8">
+    <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+    <p className="mb-4 text-gray-500">No connected partners yet.</p>
+    <Button
+      className="bg-gradient-to-r from-[#457B9D] to-[#1D3557] text-white mx-auto flex items-center gap-2"
+      onClick={() => navigate('/dashboard/entrepreneur?tab=marketplace')}
+    >
+      <Users className="w-4 h-4 mr-2" /> Add Partner
+    </Button>
+  </div>
+)}
+        </div>
           </TabsContent>
         </Tabs>
+  </Card>
         {/* Success Notification */}
         {showNotification && (
           <div className="fixed bottom-6 right-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-in slide-in-from-bottom-5">
