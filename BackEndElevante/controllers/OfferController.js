@@ -288,6 +288,64 @@ export const getOffersByRequest = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, count: offers.length, data: offers });
 });
 
+// @desc    Get offers for a specific business
+// @route   GET /api/offers/business/:businessId
+// @access  Private (business owner)
+export const getOffersByBusiness = asyncHandler(async (req, res) => {
+  // Validate businessId
+  if (!mongoose.Types.ObjectId.isValid(req.params.businessId)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid business ID format" });
+  }
+
+  // Get all requests for this business
+  const requests = await Request.find({ 
+    business: req.params.businessId,
+    createdBy: req.user._id 
+  });
+
+  if (requests.length === 0) {
+    return res.status(200).json({ 
+      success: true, 
+      count: 0, 
+      data: [],
+      message: "No requests found for this business" 
+    });
+  }
+
+  // Get all offers for these requests
+  const requestIds = requests.map(req => req._id);
+  const offers = await Offer.find({ 
+    requestId: { $in: requestIds } 
+  })
+  .populate("offeredBy", "fullName username role createdAt updatedAt")
+  .populate("requestId", "title offerType supplyType createdAt updatedAt")
+  .sort({ createdAt: -1 });
+
+  // Add request information to each offer
+  const offersWithRequestInfo = offers.map(offer => ({
+    ...offer.toObject(),
+    requestTitle: offer.requestId?.title || 'Unknown Request',
+    requestType: offer.requestId?.offerType || 'Unknown',
+    requestSupplyType: offer.requestId?.supplyType || null,
+    requestCreatedAt: offer.requestId?.createdAt,
+    requestUpdatedAt: offer.requestId?.updatedAt,
+    offeredByInfo: {
+      name: offer.offeredBy?.fullName || offer.offeredBy?.username || 'Unknown',
+      role: offer.offeredBy?.role || 'Unknown',
+      createdAt: offer.offeredBy?.createdAt,
+      updatedAt: offer.offeredBy?.updatedAt
+    }
+  }));
+
+  res.status(200).json({ 
+    success: true, 
+    count: offersWithRequestInfo.length, 
+    data: offersWithRequestInfo 
+  });
+});
+
 // @desc    Accept an offer
 // @route   PATCH /api/offers/:id/accept
 // @access  Private (request creator)
@@ -335,23 +393,44 @@ export const acceptOffer = asyncHandler(async (req, res) => {
     request.isOpen = false;
     await request.save();
 
-    // أنشئ صفقة (Deal) دائماً عند قبول الأوفر، مع roles متوافقة مع schema
-    const newDeal = await Deal.create({
-      participants: [
-        { user: offer.offeredBy, role: "investor" },
-        { user: request.createdBy, role: "entrepreneur" },
-      ],
-      initiatedBy: request.createdBy,
-      relatedBusiness: request.business,
-      relatedRequest: request._id,
-      sourceType: "offer",
-      sourceId: offer._id,
-      dealType: "Investment",
-      description: offer.description,
-      amount: offer.amount || offer.price || 0,
-      status: "pending",
-    });
-    console.log("DEBUG: Deal created:", newDeal);
+    // Create appropriate entity based on offer type
+    if (request.offerType === 'Investment') {
+      // Create Deal for Investment offers
+      const newDeal = await Deal.create({
+        participants: [
+          { user: offer.offeredBy, role: "investor" },
+          { user: request.createdBy, role: "entrepreneur" },
+        ],
+        initiatedBy: request.createdBy,
+        relatedBusiness: request.business,
+        relatedRequest: request._id,
+        sourceType: "offer",
+        sourceId: offer._id,
+        dealType: "Investment",
+        description: offer.description,
+        amount: offer.amount || offer.price || 0,
+        status: "pending",
+      });
+      console.log("DEBUG: Investment Deal created:", newDeal);
+    } else {
+      // Create Order for Supply offers
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const newOrder = await Order.create({
+        supplierId: offer.offeredBy,
+        entrepreneurId: request.createdBy,
+        relatedBusiness: request.business,
+        relatedRequest: request._id,
+        sourceType: "offer",
+        sourceId: offer._id,
+        totalAmount: offer.amount || offer.price || 0,
+        status: "processing",
+        orderNumber: orderNumber,
+        // Add items if they exist in the offer
+        products: offer.items?.filter(item => item.itemType === 'Product') || [],
+        services: offer.items?.filter(item => item.itemType === 'Service') || [],
+      });
+      console.log("DEBUG: Supply Order created:", newOrder);
+    }
   } catch (err) {
     offer.status = "pending";
     await offer.save();
@@ -422,6 +501,68 @@ export const rejectOffer = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ success: true, message: "Offer rejected" });
+});
+
+// @desc    Get offers I received and accepted
+// @route   GET /api/offers/accepted-received
+// @access  Private
+export const getAcceptedReceivedOffers = asyncHandler(async (req, res) => {
+  // Get all requests created by current user
+  const requests = await Request.find({ createdBy: req.user._id });
+  const requestIds = requests.map(req => req._id);
+
+  // Get accepted offers for these requests
+  const offers = await Offer.find({
+    requestId: { $in: requestIds },
+    status: 'accepted'
+  })
+  .populate('offeredBy', 'fullName username role')
+  .populate('requestId', 'title offerType supplyType')
+  .sort({ createdAt: -1 });
+
+  const offersWithInfo = offers.map(offer => ({
+    ...offer.toObject(),
+    requestTitle: offer.requestId?.title || 'Unknown Request',
+    requestType: offer.requestId?.offerType || 'Unknown',
+    requestSupplyType: offer.requestId?.supplyType || null,
+    offeredByInfo: {
+      name: offer.offeredBy?.fullName || offer.offeredBy?.username || 'Unknown',
+      role: offer.offeredBy?.role || 'Unknown'
+    }
+  }));
+
+  res.status(200).json({
+    success: true,
+    count: offersWithInfo.length,
+    data: offersWithInfo
+  });
+});
+
+// @desc    Get offers I sent and were accepted
+// @route   GET /api/offers/accepted-sent
+// @access  Private
+export const getAcceptedSentOffers = asyncHandler(async (req, res) => {
+  // Get offers sent by current user that were accepted
+  const offers = await Offer.find({
+    offeredBy: req.user._id,
+    status: 'accepted'
+  })
+  .populate('requestId', 'title offerType supplyType createdBy')
+  .sort({ createdAt: -1 });
+
+  const offersWithInfo = offers.map(offer => ({
+    ...offer.toObject(),
+    requestTitle: offer.requestId?.title || 'Unknown Request',
+    requestType: offer.requestId?.offerType || 'Unknown',
+    requestSupplyType: offer.requestId?.supplyType || null,
+    requestCreator: offer.requestId?.createdBy || null
+  }));
+
+  res.status(200).json({
+    success: true,
+    count: offersWithInfo.length,
+    data: offersWithInfo
+  });
 });
 
 // @desc    Delete offer (only by owner or admin)

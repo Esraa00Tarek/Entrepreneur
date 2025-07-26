@@ -15,9 +15,9 @@ import { format } from "date-fns";
 import BusinessSelector from "../../components/BusinessSelector";
 
 const statusStyles = {
-  Pending: "bg-yellow-100 text-yellow-800",
-  Accepted: "bg-green-100 text-green-800",
-  Rejected: "bg-red-100 text-red-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  accepted: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
 };
 
 const OffersPage = (props) => {
@@ -37,13 +37,12 @@ const OffersPage = (props) => {
 
   // Filtering state
   const [typeFilter, setTypeFilter] = useState("All"); // All, Supply, Investment
-  const [subTypeFilter, setSubTypeFilter] = useState("All"); // فلتر فرعي للـ Supply
+  const [subTypeFilter, setSubTypeFilter] = useState("All"); // Sub-filter for Supply
   const [sortBy, setSortBy] = useState("newest"); // newest, oldest
 
   const params = useParams();
   const requestId = props.requestId || params.requestId;
   const [businesses, setBusinesses] = useState([]);
-  const [requests, setRequests] = useState([]);
   const [offersState, setOffersState] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -56,7 +55,7 @@ const OffersPage = (props) => {
       setError(null);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/businesses", {
+        const res = await axios.get("http://localhost:5000/api/businesses/my", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const businessesArr = (res.data.data || []).map((biz) => ({
@@ -77,63 +76,29 @@ const OffersPage = (props) => {
     // eslint-disable-next-line
   }, []);
 
-  useEffect(() => {
-    if (!selectedBusinessId) return;
-    const fetchRequests = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/requests/my", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        // فلتر الطلبات الخاصة بالبزنس المختار
-        const filteredRequests = (res.data.data || []).filter((r) => r.business === selectedBusinessId);
-        setRequests(filteredRequests);
-      } catch (err) {
-        setError("Failed to load requests");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRequests();
-  }, [selectedBusinessId]);
 
-  // جلب كل العروض لجميع طلبات البيزنيس المختار
+
+  // Fetch all offers for the selected business
   useEffect(() => {
-    if (requests.length === 0) {
+    if (!selectedBusinessId) {
       setOffersState([]);
       return;
     }
     
-    const fetchAllOffersForBusiness = async () => {
+    const fetchOffersForBusiness = async () => {
       setLoading(true);
       setError(null);
       try {
         const token = localStorage.getItem("token");
-        const allOffers = [];
+        const res = await axios.get(
+          `http://localhost:5000/api/offers/business/${selectedBusinessId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         
-        // جلب العروض لكل طلب في البيزنيس المختار
-        for (const request of requests) {
-          console.log("Fetching offers for requestId:", request._id);
-          const res = await axios.get(
-            `http://localhost:5000/api/offers/request/${request._id}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          const offers = res.data.data || [];
-          // إضافة معلومات الطلب لكل عرض
-          const offersWithRequestInfo = offers.map(offer => ({
-            ...offer,
-            requestTitle: request.title,
-            requestId: request._id
-          }));
-          allOffers.push(...offersWithRequestInfo);
-        }
-        
-        console.log("ALL OFFERS FOR BUSINESS:", allOffers);
-        setOffersState(allOffers);
+        console.log("OFFERS FOR BUSINESS:", res.data);
+        setOffersState(res.data.data || []);
       } catch (err) {
         setError("Failed to load offers");
         console.error("Error fetching offers:", err);
@@ -142,8 +107,8 @@ const OffersPage = (props) => {
       }
     };
     
-    fetchAllOffersForBusiness();
-  }, [requests]);
+    fetchOffersForBusiness();
+  }, [selectedBusinessId]);
 
   useEffect(() => {
     if (selectedBusinessId)
@@ -152,13 +117,13 @@ const OffersPage = (props) => {
 
   const navigate = useNavigate();
 
-  // فلترة العروض حسب النوع والفرعي
+  // Filter offers by type and subtype
   let offers = offersState;
   if (typeFilter !== "All") {
     offers = offers.filter((o) => o.offerType === typeFilter);
   }
   if (typeFilter === "Supply" && subTypeFilter !== "All") {
-    offers = offers.filter((o) => o.subtype === subTypeFilter);
+    offers = offers.filter((o) => o.requestSupplyType === subTypeFilter);
   }
   offers = offers.sort((a, b) => {
     if (sortBy === "newest") {
@@ -168,41 +133,41 @@ const OffersPage = (props) => {
     }
   });
 
-  // قبول العرض فعليًا من الباكند
+  // Accept offer and navigate to appropriate page
   const handleAccept = async (offerId) => {
     setViewOffer(null);
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      await axios.patch(
-        `/api/offers/${offerId}/accept`,
+      const response = await axios.patch(
+        `http://localhost:5000/api/offers/${offerId}/accept`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      // تحديث العروض بعد القبول
-      if (requests.length > 0) {
-        const allOffers = [];
-        for (const request of requests) {
-          const res = await axios.get(
-            `/api/offers/request/${request._id}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          const offers = res.data.data || [];
-          const offersWithRequestInfo = offers.map(offer => ({
-            ...offer,
-            requestTitle: request.title,
-            requestId: request._id
-          }));
-          allOffers.push(...offersWithRequestInfo);
+      
+      // Find the offer to determine its type
+      const acceptedOffer = offersState.find(offer => offer._id === offerId);
+      const isInvestment = acceptedOffer?.offerType === 'Investment';
+      
+      // Remove accepted offer from the list
+      setOffersState(prevOffers => 
+        prevOffers.filter(offer => offer._id !== offerId)
+      );
+      
+      toast.success(`Offer accepted successfully! Redirecting to ${isInvestment ? 'deals' : 'orders'}...`);
+      
+      // Navigate to appropriate page based on offer type
+      setTimeout(() => {
+        if (isInvestment) {
+          navigate('/my-deals');
+        } else {
+          navigate('/my-orders'); // You'll need to create this page or use existing orders page
         }
-        setOffersState(allOffers);
-      }
-      toast.success("Offer accepted successfully!");
+      }, 1500);
+      
     } catch (err) {
       setError("Failed to accept offer");
       toast.error("Failed to accept offer.");
@@ -220,32 +185,18 @@ const OffersPage = (props) => {
     try {
       const token = localStorage.getItem("token");
       await axios.patch(
-        `/api/offers/${confirmRejectOfferId}/reject`,
+        `http://localhost:5000/api/offers/${confirmRejectOfferId}/reject`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      // تحديث العروض بعد الرفض
-      if (requests.length > 0) {
-        const allOffers = [];
-        for (const request of requests) {
-          const res = await axios.get(
-            `/api/offers/request/${request._id}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          const offers = res.data.data || [];
-          const offersWithRequestInfo = offers.map(offer => ({
-            ...offer,
-            requestTitle: request.title,
-            requestId: request._id
-          }));
-          allOffers.push(...offersWithRequestInfo);
-        }
-        setOffersState(allOffers);
-      }
+      
+      // Remove the rejected offer from the list
+      setOffersState(prevOffers => 
+        prevOffers.filter(offer => offer._id !== confirmRejectOfferId)
+      );
+      
       setViewOffer(null);
       setConfirmRejectOfferId(null);
       toast.success("Offer rejected successfully!");
@@ -314,7 +265,7 @@ const OffersPage = (props) => {
                 </div>
               )}
             </div>
-            {/* فلتر فرعي يظهر فقط عند اختيار Supply */}
+            {/* Sub-filter that appears only when Supply is selected */}
             {typeFilter === "Supply" && (
               <div className="relative w-full max-w-xs">
                 <button
@@ -407,14 +358,38 @@ const OffersPage = (props) => {
         </div>
       </div>
       {/* Top Header Section */}
-      {requests.length > 0 && (
+      {selectedBusinessId && (
         <div className="mb-8">
           {/* Filters */}
           {/* Filters are now in the header row above */}
         </div>
       )}
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-16">
+          <div className="flex flex-col items-center justify-center mb-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#457B9D]"></div>
+          </div>
+          <h3 className="text-xl font-semibold mb-2" style={{ color: "#1D3557" }}>
+            Loading offers...
+          </h3>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="text-center py-16">
+          <div className="flex flex-col items-center justify-center mb-4">
+            <Info className="w-12 h-12" style={{ color: "#E63946" }} />
+          </div>
+          <h3 className="text-xl font-semibold mb-2" style={{ color: "#E63946" }}>
+            {error}
+          </h3>
+        </div>
+      )}
+
       {/* Offers List or Empty State */}
-      {requests.length === 0 ? (
+      {!loading && !error && !selectedBusinessId ? (
         <div className="text-center py-16">
           <div className="flex flex-col items-center justify-center mb-4">
             <Info className="w-12 h-12" style={{ color: "#1D3557" }} />
@@ -423,10 +398,18 @@ const OffersPage = (props) => {
             className="text-xl font-semibold mb-2"
             style={{ color: "#1D3557" }}
           >
-            No requests found for this business.
+            {businesses.length === 0 
+              ? "No businesses found. Please create a business first." 
+              : "Please select a business to view offers."
+            }
           </h3>
+          {businesses.length === 0 && (
+            <p className="text-gray-600 mt-2">
+              You need to create a business first before you can receive offers.
+            </p>
+          )}
         </div>
-      ) : offers.length === 0 ? (
+      ) : !loading && !error && offers.length === 0 ? (
         <div className="text-center py-16">
           <div className="flex flex-col items-center justify-center mb-4">
             <Info className="w-12 h-12" style={{ color: "#1D3557" }} />
@@ -437,8 +420,11 @@ const OffersPage = (props) => {
           >
             No offers received yet for this business.
           </h3>
+          <p className="text-gray-600 mt-2">
+            When you receive offers, they will appear here.
+          </p>
         </div>
-      ) : (
+      ) : !loading && !error && (
         <div className="grid gap-6 md:grid-cols-2">
           {offers.map((offer) => (
             <div
@@ -446,7 +432,7 @@ const OffersPage = (props) => {
               className="bg-white rounded-lg shadow-md p-4 flex flex-col h-full justify-between animate-fade-in-up"
             >
               <div>
-                {/* إضافة عنوان الطلب */}
+                {/* Request title */}
                 <div className="mb-2">
                   <span className="text-xs text-gray-500">Request:</span>
                   <span className="text-sm font-medium text-[#457B9D] ml-1">
@@ -455,9 +441,7 @@ const OffersPage = (props) => {
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="font-semibold text-[#1D3557] text-lg">
-                    {offer.offerType === "Supply"
-                      ? offer.offeredBy.name
-                      : offer.offeredBy.name}
+                    {offer.offeredByInfo?.name || 'Unknown User'}
                   </span>
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-xs font-medium ml-2 ${
@@ -468,19 +452,24 @@ const OffersPage = (props) => {
                   </span>
                   <span className="ml-2 text-xs bg-[#F1F5F9] text-[#1D3557] px-2 py-0.5 rounded-full">
                     {offer.offerType}
-                    {offer.offerType === "Supply" && offer.subtype
-                      ? ` / ${offer.subtype}`
+                    {offer.offerType === "Supply" && offer.requestSupplyType
+                      ? ` / ${offer.requestSupplyType}`
                       : ""}
                   </span>
                 </div>
                 <div className="mb-2 break-words text-sm text-[#1D3557]">
                   {offer.description}
                 </div>
-                {/* السعر والملكية والمدة */}
+                {/* Price, Equity, and Duration */}
                 <div className="flex flex-wrap gap-3 mb-2 text-xs text-[#1D3557]">
                   {offer.price !== undefined && (
                     <span>
                       Price: <b>{offer.price}</b>
+                    </span>
+                  )}
+                  {offer.amount !== undefined && (
+                    <span>
+                      Amount: <b>{offer.amount}</b>
                     </span>
                   )}
                   {offer.equityPercentage !== undefined && (
@@ -494,7 +483,7 @@ const OffersPage = (props) => {
                     </span>
                   )}
                 </div>
-                {/* البنود (items) */}
+                {/* Items */}
                 {offer.items && offer.items.length > 0 && (
                   <div className="mb-2">
                     <span className="font-semibold">Items:</span>
@@ -508,7 +497,7 @@ const OffersPage = (props) => {
                     </ul>
                   </div>
                 )}
-                {/* المرفقات */}
+                {/* Attachments */}
                 {offer.attachments && offer.attachments.length > 0 && (
                   <div className="mb-2">
                     <span className="font-semibold">Attachments:</span>
@@ -528,7 +517,7 @@ const OffersPage = (props) => {
                     </ul>
                   </div>
                 )}
-                {/* التواريخ */}
+                {/* Dates */}
                 <div className="text-xs mb-2 text-[#1D3557]">
                   Created:{" "}
                   {offer.createdAt
@@ -542,8 +531,22 @@ const OffersPage = (props) => {
                     : ""}
                 </div>
                 <div className="text-xs mb-2 text-[#1D3557]">
-                  Comment: {offer.comment}
+                  Comment: {offer.comment || 'No comment'}
                 </div>
+                {/* User Role and Creation Info */}
+                <div className="text-xs mb-2 text-[#1D3557]">
+                  User Role: <b>{offer.offeredByInfo?.role || 'Unknown'}</b>
+                </div>
+                <div className="text-xs mb-2 text-[#1D3557]">
+                  User Created: {offer.offeredByInfo?.createdAt
+                    ? format(new Date(offer.offeredByInfo.createdAt), "dd MMM yyyy, HH:mm")
+                    : "Unknown"}
+                </div>
+                {offer.offeredByInfo?.updatedAt && (
+                  <div className="text-xs mb-2 text-[#1D3557]">
+                    User Updated: {format(new Date(offer.offeredByInfo.updatedAt), "dd MMM yyyy, HH:mm")}
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 justify-end mt-4">
                 <button
@@ -574,18 +577,6 @@ const OffersPage = (props) => {
                 >
                   View Details
                 </button>
-                {/* زر محادثة (تحضيري) */}
-                <button
-                  className="px-4 py-2 rounded-lg font-medium transition-all bg-[#F1F5F9] text-[#1D3557] hover:bg-[#457B9D] hover:text-white"
-                  title="Open chat about this offer"
-                  onClick={() =>
-                    navigate(
-                      `/messages?partner=${offer.offeredBy._id}&offerId=${offer._id}`
-                    )
-                  }
-                >
-                  Message
-                </button>
               </div>
             </div>
           ))}
@@ -609,12 +600,12 @@ const OffersPage = (props) => {
               <span className="font-semibold">
                 {viewOffer.offerType === "Supply" ? "Supplier" : "Investor"}:
               </span>{" "}
-              {viewOffer.offeredBy.name}
+              {viewOffer.offeredByInfo?.name || 'Unknown User'}
             </div>
             <div className="mb-2">
               <span className="font-semibold">Type:</span> {viewOffer.offerType}
-              {viewOffer.offerType === "Supply" && viewOffer.subtype
-                ? ` / ${viewOffer.subtype}`
+              {viewOffer.offerType === "Supply" && viewOffer.requestSupplyType
+                ? ` / ${viewOffer.requestSupplyType}`
                 : ""}
             </div>
             <div className="mb-2">
@@ -644,6 +635,10 @@ const OffersPage = (props) => {
               {viewOffer.price !== undefined ? viewOffer.price : "-"}
             </div>
             <div className="mb-2">
+              <span className="font-semibold">Amount:</span>{" "}
+              {viewOffer.amount !== undefined ? viewOffer.amount : "-"}
+            </div>
+            <div className="mb-2">
               <span className="font-semibold">Equity:</span>{" "}
               {viewOffer.equityPercentage !== undefined
                 ? viewOffer.equityPercentage + "%"
@@ -659,7 +654,7 @@ const OffersPage = (props) => {
               <span className="font-semibold">Description:</span>{" "}
               {viewOffer.description}
             </div>
-            {/* البنود (items) */}
+            {/* Items */}
             {viewOffer.items && viewOffer.items.length > 0 && (
               <div className="mb-2">
                 <span className="font-semibold">Items:</span>
@@ -673,7 +668,7 @@ const OffersPage = (props) => {
                 </ul>
               </div>
             )}
-            {/* المرفقات */}
+            {/* Attachments */}
             {viewOffer.attachments && viewOffer.attachments.length > 0 && (
               <div className="mb-2">
                 <span className="font-semibold">Attachments:</span>
@@ -695,26 +690,30 @@ const OffersPage = (props) => {
             )}
             <div className="mb-2">
               <span className="font-semibold">Comment:</span>{" "}
-              {viewOffer.comment}
+              {viewOffer.comment || 'No comment'}
             </div>
+            <div className="mb-2">
+              <span className="font-semibold">User Role:</span>{" "}
+              {viewOffer.offeredByInfo?.role || 'Unknown'}
+            </div>
+            <div className="mb-2">
+              <span className="font-semibold">User Created:</span>{" "}
+              {viewOffer.offeredByInfo?.createdAt
+                ? format(new Date(viewOffer.offeredByInfo.createdAt), "dd MMM yyyy, HH:mm")
+                : "Unknown"}
+            </div>
+            {viewOffer.offeredByInfo?.updatedAt && (
+              <div className="mb-2">
+                <span className="font-semibold">User Updated:</span>{" "}
+                {format(new Date(viewOffer.offeredByInfo.updatedAt), "dd MMM yyyy, HH:mm")}
+              </div>
+            )}
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setViewOffer(null)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
                 Close
-              </button>
-              {/* زر محادثة (تحضيري) */}
-              <button
-                className="px-4 py-2 rounded-lg font-medium transition-all bg-[#F1F5F9] text-[#1D3557] hover:bg-[#457B9D] hover:text-white"
-                title="Open chat about this offer"
-                onClick={() =>
-                  navigate(
-                    `/messages?partner=${viewOffer.offeredBy._id}&offerId=${viewOffer._id}`
-                  )
-                }
-              >
-                Message
               </button>
             </div>
           </div>

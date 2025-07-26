@@ -6,6 +6,9 @@ import {
   updateOffer,
   getMyOffers,
   getOffersByRequest,
+  getOffersByBusiness,
+  getAcceptedReceivedOffers,
+  getAcceptedSentOffers,
   getOfferById,
   acceptOffer,
   rejectOffer,
@@ -56,6 +59,27 @@ router.get('/my', protect, getMyOffers);
  * @access  Private (request creator)
  */
 router.get('/request/:requestId', protect, getOffersByRequest);
+
+/**
+ * @route   GET /api/offers/business/:businessId
+ * @desc    Get offers for a specific business
+ * @access  Private (business owner)
+ */
+router.get('/business/:businessId', protect, getOffersByBusiness);
+
+/**
+ * @route   GET /api/offers/accepted-received
+ * @desc    Get offers I received and accepted
+ * @access  Private
+ */
+router.get('/accepted-received', protect, getAcceptedReceivedOffers);
+
+/**
+ * @route   GET /api/offers/accepted-sent
+ * @desc    Get offers I sent and were accepted
+ * @access  Private
+ */
+router.get('/accepted-sent', protect, getAcceptedSentOffers);
 
 /**
  * @route   GET /api/offers/:id
