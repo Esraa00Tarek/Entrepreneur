@@ -1,0 +1,112 @@
+{
+  "info": {
+    "name": "Dispute API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Dispute (Milestone, Valid)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"milestone\",\n  \"targetId\": \"{{milestoneId}}\",\n  \"reason\": \"Milestone not completed as agreed.\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/disputes", "host": [ "{{baseUrl}}" ], "path": [ "api", "disputes" ] }
+      },
+      "response": [ { "name": "Success", "status": "Created", "code": 201 } ]
+    },
+    {
+      "name": "Create Dispute (Withdrawal, Valid)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"withdrawal\",\n  \"targetId\": \"{{withdrawalId}}\",\n  \"reason\": \"Withdrawal not processed.\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/disputes", "host": [ "{{baseUrl}}" ], "path": [ "api", "disputes" ] }
+      },
+      "response": [ { "name": "Success", "status": "Created", "code": 201 } ]
+    },
+    {
+      "name": "Create Dispute (Missing Fields)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"milestone\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/disputes", "host": [ "{{baseUrl}}" ], "path": [ "api", "disputes" ] }
+      },
+      "response": [ { "name": "Error", "status": "Bad Request", "code": 400 } ]
+    },
+    {
+      "name": "Create Dispute (Invalid targetId)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"milestone\",\n  \"targetId\": \"invalidId\",\n  \"reason\": \"Test\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/disputes", "host": [ "{{baseUrl}}" ], "path": [ "api", "disputes" ] }
+      },
+      "response": [ { "name": "Error", "status": "Bad Request", "code": 400 } ]
+    },
+    {
+      "name": "Resolve Dispute (Admin, Valid)",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resolution\": \"Funds released to entrepreneur.\",\n  \"releaseTo\": \"entrepreneur\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/resolve", "host": [ "{{baseUrl}}" ], "path": [ "api", "disputes", "{{disputeId}}", "resolve" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Add Message to Dispute (Valid)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"I have attached proof of payment.\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}/messages", "host": [ "{{baseUrl}}" ], "path": [ "api", "disputes", "{{disputeId}}", "messages" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Get My Disputes",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/disputes/my", "host": [ "{{baseUrl}}" ], "path": [ "api", "disputes", "my" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Get Dispute by ID",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/disputes/{{disputeId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "disputes", "{{disputeId}}" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "milestoneId", "value": "" },
+    { "key": "withdrawalId", "value": "" },
+    { "key": "disputeId", "value": "" }
+  ]
+} 

@@ -1,0 +1,163 @@
+{
+  "info": {
+    "_postman_id": "ord1-ord2-ord3-ord4-ord5ord6ord7ord8",
+    "name": "Order API Postman Collection (Full CRUD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Order by ID – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "orders", "{{orderId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"_id\": \"...\",\n  \"entrepreneurId\": \"...\",\n  \"supplierId\": \"...\",\n  \"relatedBusiness\": \"...\",\n  \"products\": [ ... ],\n  \"services\": [ ... ],\n  \"totalAmount\": 1000,\n  \"status\": \"processing\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update Order Status – Valid",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "status", "value": "done", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}/status",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "orders", "{{orderId}}", "status" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"_id\": \"...\",\n  \"status\": \"done\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Withdraw Order – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}/withdraw",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "orders", "{{orderId}}", "withdraw" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Order withdrawn successfully\",\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Confirm Order Receipt – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}/confirm-receipt",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "orders", "{{orderId}}", "confirm-receipt" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"message\": \"Order completed, payment released to supplier (after platform fee deduction).\",\n  \"platformFee\": 20,\n  \"netAmount\": 980\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Orders for Supplier – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/supplier",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "orders", "supplier" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "[{\n  \"_id\": \"...\", ...\n}]"
+        }
+      ]
+    },
+    {
+      "name": "Filter Orders for Supplier – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/supplier/filter?status=done&startDate=2024-01-01&endDate=2024-12-31",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "orders", "supplier", "filter" ],
+          "query": [
+            { "key": "status", "value": "done" },
+            { "key": "startDate", "value": "2024-01-01" },
+            { "key": "endDate", "value": "2024-12-31" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "[{\n  \"_id\": \"...\", ...\n}]"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "orderId", "value": "" }
+  ]
+} 

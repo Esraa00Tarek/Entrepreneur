@@ -1,0 +1,219 @@
+{
+  "info": {
+    "_postman_id": "o1o2o3o4-o5o6-o7o8-o9oa-obcbdbebfbfc",
+    "name": "Offer API Postman Collection (Full CRUD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Offer – Valid",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "amount", "value": "5000", "type": "text" },
+            { "key": "message", "value": "Best price for your request", "type": "text" },
+            { "key": "items", "value": "[{\"itemType\":\"Product\",\"itemId\":\"64a...\",\"quantity\":2,\"price\":100}]", "type": "text" },
+            { "key": "files", "src": "{{attachment1}}", "type": "file" },
+            { "key": "files", "src": "{{attachment2}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/offers/{{requestId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "offers", "{{requestId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "Created",
+          "code": 201,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update Offer – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "price", "value": "6000", "type": "text" },
+            { "key": "description", "value": "Updated offer description", "type": "text" },
+            { "key": "files", "src": "{{attachment1}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/offers/{{offerId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "offers", "{{offerId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Offer updated successfully\",\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Offer by ID – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/offers/{{offerId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "offers", "{{offerId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Accept Offer – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/offers/{{offerId}}/accept",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "offers", "{{offerId}}", "accept" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Offer accepted\",\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject Offer – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/offers/{{offerId}}/reject",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "offers", "{{offerId}}", "reject" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Offer rejected\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Withdraw Offer – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/offers/{{offerId}}/withdraw",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "offers", "{{offerId}}", "withdraw" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Offer withdrawn successfully\",\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Delete Offer – Valid",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/offers/{{offerId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "offers", "{{offerId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Offer deleted\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "List My Offers – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/offers/my",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "offers", "my" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [ ... ]\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "requestId", "value": "" },
+    { "key": "offerId", "value": "" },
+    { "key": "attachment1", "value": "test/data/05-versions-space.pdf" },
+    { "key": "attachment2", "value": "test/data/05-versions-space.pdf" }
+  ]
+} 

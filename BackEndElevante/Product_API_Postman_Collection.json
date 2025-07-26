@@ -1,0 +1,202 @@
+{
+  "info": {
+    "_postman_id": "prd1-prd2-prd3-prd4-prd5prd6prd7prd8",
+    "name": "Product API Postman Collection (Full CRUD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Product – Valid",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "Laptop", "type": "text" },
+            { "key": "category", "value": "Electronics", "type": "text" },
+            { "key": "price", "value": "2500", "type": "text" },
+            { "key": "stock", "value": "50", "type": "text" },
+            { "key": "description", "value": "High performance laptop", "type": "text" },
+            { "key": "images", "src": "{{image1}}", "type": "file" },
+            { "key": "images", "src": "{{image2}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "products" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "Created",
+          "code": 201,
+          "body": "{\n  \"_id\": \"...\",\n  \"name\": \"Laptop\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update Product – Valid",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "Updated Product", "type": "text" },
+            { "key": "images", "src": "{{image1}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "products", "{{productId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"_id\": \"...\",\n  \"name\": \"...\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Delete Product – Valid",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "products", "{{productId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"message\": \"Product deleted successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Toggle Product Active Status – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}/toggle-active",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "products", "{{productId}}", "toggle-active" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"message\": \"Product is now active\",\n  \"isActive\": true\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Product by ID – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "products", "{{productId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"_id\": \"...\",\n  \"name\": \"...\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Products by Supplier – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/supplier/{{supplierId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "products", "supplier", "{{supplierId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "[{\n  \"_id\": \"...\", ...\n}]"
+        }
+      ]
+    },
+    {
+      "name": "Filter Products – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products?name=Laptop&category=Electronics&isActive=true",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "products" ],
+          "query": [
+            { "key": "name", "value": "Laptop" },
+            { "key": "category", "value": "Electronics" },
+            { "key": "isActive", "value": "true" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "[{\n  \"_id\": \"...\", ...\n}]"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "supplierId", "value": "" },
+    { "key": "image1", "value": "test/data/05-versions-space.pdf" },
+    { "key": "image2", "value": "test/data/05-versions-space.pdf" }
+  ]
+} 

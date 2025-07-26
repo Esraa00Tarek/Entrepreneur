@@ -1,0 +1,153 @@
+{
+  "info": {
+    "_postman_id": "m1m2m3m4-m5m6-m7m8-m9ma-mbcbdbebfbfc",
+    "name": "Milestone API Postman Collection (Full CRUD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Milestone – Valid",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "title", "value": "First Payment", "type": "text" },
+            { "key": "description", "value": "This covers the initial payment for the project milestone, including all deliverables as agreed.", "type": "text" },
+            { "key": "stageUpdate", "value": "in progress", "type": "text" },
+            { "key": "files", "src": "{{attachment1}}", "type": "file" },
+            { "key": "files", "src": "{{attachment2}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/milestones?businessId={{businessId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "milestones" ],
+          "query": [
+            { "key": "businessId", "value": "{{businessId}}" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "Created",
+          "code": 201,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Milestone created successfully\",\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Milestone by ID – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/milestones/{{milestoneId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "milestones", "{{milestoneId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update Milestone – Valid",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Updated Payment\",\n  \"description\": \"Updated milestone description\",\n  \"stageUpdate\": \"completed\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/milestones/{{milestoneId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "milestones", "{{milestoneId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Delete Milestone – Valid",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/milestones/{{milestoneId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "milestones", "{{milestoneId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Milestone deleted successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "List Milestones by Business – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/milestones/business/{{businessId}}?page=1&limit=10",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "milestones", "business", "{{businessId}}" ],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [...]\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "milestoneId", "value": "" },
+    { "key": "businessId", "value": "" },
+    { "key": "attachment1", "value": "test/data/05-versions-space.pdf" },
+    { "key": "attachment2", "value": "test/data/05-versions-space.pdf" }
+  ]
+} 

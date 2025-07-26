@@ -1,0 +1,232 @@
+{
+  "info": {
+    "_postman_id": "svc1-svc2-svc3-svc4-svc5svc6svc7svc8",
+    "name": "Service API Postman Collection (Full CRUD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Service – Valid",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "Web Design", "type": "text" },
+            { "key": "category", "value": "IT", "type": "text" },
+            { "key": "price", "value": "1500", "type": "text" },
+            { "key": "description", "value": "Professional web design service", "type": "text" },
+            { "key": "images", "src": "{{image1}}", "type": "file" },
+            { "key": "images", "src": "{{image2}}", "type": "file" },
+            { "key": "serviceFile", "src": "{{serviceFile}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/services",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "services" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "Created",
+          "code": 201,
+          "body": "{\n  \"message\": \"Service created successfully\",\n  \"service\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update Service – Valid",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "Updated Service", "type": "text" },
+            { "key": "images", "src": "{{image1}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/services/{{serviceId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "services", "{{serviceId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"_id\": \"...\",\n  \"name\": \"...\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Delete Service – Valid",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/services/{{serviceId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "services", "{{serviceId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"message\": \"Service deleted successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Toggle Service Active Status – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/services/{{serviceId}}/toggle-active",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "services", "{{serviceId}}", "toggle-active" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"message\": \"Service is now active\",\n  \"isActive\": true\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Service by ID – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/services/{{serviceId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "services", "{{serviceId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"_id\": \"...\",\n  \"name\": \"...\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Services by Supplier – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/services/supplier/{{supplierId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "services", "supplier", "{{supplierId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "[{\n  \"_id\": \"...\", ...\n}]"
+        }
+      ]
+    },
+    {
+      "name": "Filter Services – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/services?name=Web&category=IT&isActive=true",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "services" ],
+          "query": [
+            { "key": "name", "value": "Web" },
+            { "key": "category", "value": "IT" },
+            { "key": "isActive", "value": "true" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "[{\n  \"_id\": \"...\", ...\n}]"
+        }
+      ]
+    },
+    {
+      "name": "Upload File to Service – Valid",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "serviceFile", "src": "{{serviceFile}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/services/{{serviceId}}/upload-file",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "services", "{{serviceId}}", "upload-file" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"message\": \"File uploaded and attached to service successfully\",\n  \"fileUrl\": \"...\",\n  \"service\": { ... }\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "serviceId", "value": "" },
+    { "key": "supplierId", "value": "" },
+    { "key": "image1", "value": "test/data/05-versions-space.pdf" },
+    { "key": "image2", "value": "test/data/05-versions-space.pdf" },
+    { "key": "serviceFile", "value": "test/data/05-versions-space.pdf" }
+  ]
+} 

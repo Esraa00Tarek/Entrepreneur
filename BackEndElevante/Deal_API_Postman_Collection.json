@@ -1,0 +1,171 @@
+{
+  "info": {
+    "_postman_id": "e1e2e3e4-e5e6-e7e8-e9ea-ebcbdbebfbfc",
+    "name": "Deal API Postman Collection (Full CRUD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Deal – Valid",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "participants", "value": "[{\"user\":\"64a1b2c3d4e5f6a7b8c9d0e1\",\"role\":\"entrepreneur\"},{\"user\":\"64a1b2c3d4e5f6a7b8c9d0e2\",\"role\":\"investor\"}]", "type": "text" },
+            { "key": "relatedBusiness", "value": "64a1b2c3d4e5f6a7b8c9d0e3", "type": "text" },
+            { "key": "amount", "value": "10000", "type": "text" },
+            { "key": "attachments", "src": "{{attachment1}}", "type": "file" },
+            { "key": "attachments", "src": "{{attachment2}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/deals",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "deals" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Deal by ID – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/deals/{{dealId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "deals", "{{dealId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update Deal Status – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "status", "value": "completed", "type": "text" },
+            { "key": "statusReason", "value": "Deal completed successfully", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/deals/{{dealId}}/status",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "deals", "{{dealId}}", "status" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Deal status updated\",\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Withdraw Deal – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/deals/{{dealId}}/withdraw",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "deals", "{{dealId}}", "withdraw" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Deal withdrawn successfully\",\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Delete Deal – Valid",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/deals/{{dealId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "deals", "{{dealId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Deal deleted successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "List My Deals – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/deals/my",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "deals", "my" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [ ... ]\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "dealId", "value": "" },
+    { "key": "attachment1", "value": "test/data/05-versions-space.pdf" },
+    { "key": "attachment2", "value": "test/data/05-versions-space.pdf" }
+  ]
+} 

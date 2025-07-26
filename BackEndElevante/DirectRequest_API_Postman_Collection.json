@@ -1,0 +1,152 @@
+{
+  "info": {
+    "_postman_id": "d1d2d3d4-d5d6-d7d8-d9da-dbcbdbebfbfc",
+    "name": "DirectRequest API Postman Collection (Full CRUD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create DirectRequest – Valid",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "type", "value": "deal", "type": "text" },
+            { "key": "targetUser", "value": "64a1b2c3d4e5f6a7b8c9d0e2", "type": "text" },
+            { "key": "business", "value": "64a1b2c3d4e5f6a7b8c9d0e3", "type": "text" },
+            { "key": "offerDetails", "value": "{\"amount\":5000}", "type": "text" },
+            { "key": "attachments", "src": "{{attachment1}}", "type": "file" },
+            { "key": "attachments", "src": "{{attachment2}}", "type": "file" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/direct-requests",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "direct-requests" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get DirectRequest by ID – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/direct-requests/{{directRequestId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "direct-requests", "{{directRequestId}}" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Respond to DirectRequest – Accept",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "decision", "value": "accepted", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/direct-requests/{{directRequestId}}/respond",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "direct-requests", "{{directRequestId}}", "respond" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Withdraw DirectRequest – Valid",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/direct-requests/{{directRequestId}}/withdraw",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "direct-requests", "{{directRequestId}}", "withdraw" ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"message\": \"Request withdrawn successfully\",\n  \"data\": { ... }\n}"
+        }
+      ]
+    },
+    {
+      "name": "List My DirectRequests – Valid",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/direct-requests/my?page=1&limit=10",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "direct-requests", "my" ],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"total\": 2,\n  \"page\": 1,\n  \"pages\": 1,\n  \"data\": [ ... ]\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "directRequestId", "value": "" },
+    { "key": "attachment1", "value": "test/data/05-versions-space.pdf" },
+    { "key": "attachment2", "value": "test/data/05-versions-space.pdf" }
+  ]
+} 

@@ -1,0 +1,85 @@
+{
+  "info": {
+    "name": "Withdrawal API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Withdrawal (Valid)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dealId\": \"{{dealId}}\",\n  \"amount\": 1000,\n  \"reason\": \"Project expenses\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/withdrawals", "host": [ "{{baseUrl}}" ], "path": [ "api", "withdrawals" ] }
+      },
+      "response": [ { "name": "Success", "status": "Created", "code": 201 } ]
+    },
+    {
+      "name": "Create Withdrawal (Missing Fields)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 1000\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/withdrawals", "host": [ "{{baseUrl}}" ], "path": [ "api", "withdrawals" ] }
+      },
+      "response": [ { "name": "Error", "status": "Bad Request", "code": 400 } ]
+    },
+    {
+      "name": "Create Withdrawal (Invalid dealId)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dealId\": \"invalidId\",\n  \"amount\": 1000,\n  \"reason\": \"Test\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/withdrawals", "host": [ "{{baseUrl}}" ], "path": [ "api", "withdrawals" ] }
+      },
+      "response": [ { "name": "Error", "status": "Bad Request", "code": 400 } ]
+    },
+    {
+      "name": "Approve Withdrawal (Admin, Valid)",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/withdrawals/{{withdrawalId}}/approve", "host": [ "{{baseUrl}}" ], "path": [ "api", "withdrawals", "{{withdrawalId}}", "approve" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Upload Withdrawal Proof (Valid)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"url\": \"https://cloudinary.com/proof1.jpg\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/withdrawals/{{withdrawalId}}/proof", "host": [ "{{baseUrl}}" ], "path": [ "api", "withdrawals", "{{withdrawalId}}", "proof" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Get My Withdrawals",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/withdrawals/my", "host": [ "{{baseUrl}}" ], "path": [ "api", "withdrawals", "my" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "dealId", "value": "" },
+    { "key": "withdrawalId", "value": "" }
+  ]
+} 

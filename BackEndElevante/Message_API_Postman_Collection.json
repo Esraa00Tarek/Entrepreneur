@@ -1,0 +1,91 @@
+{
+  "info": {
+    "name": "Message API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Send Message (Valid)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "content", "value": "مرحبا، كيف حالك؟", "type": "text" },
+            { "key": "receiverId", "value": "{{receiverId}}", "type": "text" },
+            { "key": "attachments", "src": "{{attachment1}}", "type": "file" }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/api/messages", "host": [ "{{baseUrl}}" ], "path": [ "api", "messages" ] }
+      },
+      "response": [ { "name": "Success", "status": "Created", "code": 201 } ]
+    },
+    {
+      "name": "Send Message (Missing Content)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "receiverId", "value": "{{receiverId}}", "type": "text" }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/api/messages", "host": [ "{{baseUrl}}" ], "path": [ "api", "messages" ] }
+      },
+      "response": [ { "name": "Error", "status": "Bad Request", "code": 400 } ]
+    },
+    {
+      "name": "Get User Threads",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/messages/threads", "host": [ "{{baseUrl}}" ], "path": [ "api", "messages", "threads" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Get Thread Messages",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/messages/thread/{{threadId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "messages", "thread", "{{threadId}}" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Mark Thread Messages as Read",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/messages/thread/{{threadId}}/read", "host": [ "{{baseUrl}}" ], "path": [ "api", "messages", "thread", "{{threadId}}", "read" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Send Message (No Token)",
+      "request": {
+        "method": "POST",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "content", "value": "Test message", "type": "text" },
+            { "key": "receiverId", "value": "{{receiverId}}", "type": "text" }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/api/messages", "host": [ "{{baseUrl}}" ], "path": [ "api", "messages" ] }
+      },
+      "response": [ { "name": "Error", "status": "Unauthorized", "code": 401 } ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "receiverId", "value": "" },
+    { "key": "threadId", "value": "" },
+    { "key": "attachment1", "value": "" }
+  ]
+} 

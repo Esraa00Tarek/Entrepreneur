@@ -1,0 +1,88 @@
+{
+  "info": {
+    "name": "Review API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Submit Platform Review (Valid)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"rating\": 5,\n  \"content\": \"Great platform!\",\n  \"title\": \"My Experience\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/reviews/platform", "host": [ "{{baseUrl}}" ], "path": [ "api", "reviews", "platform" ] }
+      },
+      "response": [ { "name": "Success", "status": "Created", "code": 201 } ]
+    },
+    {
+      "name": "Submit User Review (Valid)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"toUser\": \"{{toUser}}\",\n  \"rating\": 4,\n  \"comment\": \"Very professional.\",\n  \"dealId\": \"{{dealId}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/reviews/user", "host": [ "{{baseUrl}}" ], "path": [ "api", "reviews", "user" ] }
+      },
+      "response": [ { "name": "Success", "status": "Created", "code": 201 } ]
+    },
+    {
+      "name": "Submit User Review (Missing Fields)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"toUser\": \"{{toUser}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/reviews/user", "host": [ "{{baseUrl}}" ], "path": [ "api", "reviews", "user" ] }
+      },
+      "response": [ { "name": "Error", "status": "Bad Request", "code": 400 } ]
+    },
+    {
+      "name": "Get Platform Reviews",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/reviews/platform", "host": [ "{{baseUrl}}" ], "path": [ "api", "reviews", "platform" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Get User Reviews",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/reviews/user/{{toUser}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "reviews", "user", "{{toUser}}" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Delete Platform Review (Owner)",
+      "request": {
+        "method": "DELETE",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/reviews/platform/{{reviewId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "reviews", "platform", "{{reviewId}}" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    },
+    {
+      "name": "Delete User Review (Owner)",
+      "request": {
+        "method": "DELETE",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/reviews/user/{{reviewId}}", "host": [ "{{baseUrl}}" ], "path": [ "api", "reviews", "user", "{{reviewId}}" ] }
+      },
+      "response": [ { "name": "Success", "status": "OK", "code": 200 } ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "toUser", "value": "" },
+    { "key": "dealId", "value": "" },
+    { "key": "reviewId", "value": "" }
+  ]
+} 
