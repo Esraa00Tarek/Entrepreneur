@@ -178,6 +178,63 @@ const Marketplace = () => {
 
   // Filter and sort data
   const filteredData = useMemo(() => {
+    if (activeTab === "investors") {
+      // فلترة المستثمرين
+      let filtered = investorData.filter((item) => {
+        // فلترة البحث
+        const matchesSearch =
+          (item.fullName || item.username || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.bio || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.focusSectors ? item.focusSectors.join(", ") : "").toLowerCase().includes(searchQuery.toLowerCase());
+
+        // فلترة الفلاتر
+        let matchesFilters = true;
+        if (investorFilters) {
+          if (investorFilters.country && investorFilters.country !== "") {
+            matchesFilters = matchesFilters && item.country === investorFilters.country;
+          }
+          if (investorFilters.city && investorFilters.city !== "") {
+            matchesFilters = matchesFilters && item.city === investorFilters.city;
+          }
+          if (investorFilters.state && investorFilters.state !== "") {
+            matchesFilters = matchesFilters && item.state === investorFilters.state;
+          }
+          if (investorFilters.preferredStage && investorFilters.preferredStage !== "") {
+            matchesFilters = matchesFilters && item.preferredStage === investorFilters.preferredStage;
+          }
+          if (investorFilters.minInvestment && investorFilters.minInvestment !== "") {
+            matchesFilters = matchesFilters && item.investmentRange && item.investmentRange.min >= Number(investorFilters.minInvestment);
+          }
+          if (investorFilters.maxInvestment && investorFilters.maxInvestment !== "") {
+            matchesFilters = matchesFilters && item.investmentRange && item.investmentRange.max <= Number(investorFilters.maxInvestment);
+          }
+          // يمكن إضافة المزيد من الفلاتر حسب الحاجة
+        }
+        return matchesSearch && matchesFilters;
+      });
+
+      // الترتيب
+      switch (sortBy) {
+        case "rating":
+          filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+          break;
+        case "price":
+        case "investment":
+          filtered.sort((a, b) => {
+            const aVal = a.investmentRange?.min || 0;
+            const bVal = b.investmentRange?.min || 0;
+            return aVal - bVal;
+          });
+          break;
+        case "reviews":
+          filtered.sort((a, b) => (b.reviews || 0) - (a.reviews || 0));
+          break;
+        default:
+          filtered.sort((a, b) => (a.fullName || a.username || "").localeCompare(b.fullName || b.username || ""));
+      }
+      return filtered;
+    }
+    // فلترة الموردين والخدمات كما هي
     let filtered = currentData.filter((item) => {
       const matchesSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -211,7 +268,7 @@ const Marketplace = () => {
     }
 
     return filtered;
-  }, [currentData, searchQuery, currentFilters, sortBy]);
+  }, [currentData, searchQuery, currentFilters, sortBy, activeTab, investorData, investorFilters]);
 
   // Pagination
   const itemsPerPage = 9;
@@ -319,81 +376,214 @@ const Marketplace = () => {
     return iconMap[category] || Package;
   };
 
-  const handleProposalClick = (item) => {
+  const handleProposalClick = async (item) => {
+    // فحص وجود business ID قبل فتح modal التأكيد
+    if (!currentBusinessId || currentBusinessId === "default") {
+      alert("Please create a business first before sending proposals");
+      return;
+    }
     setConfirmationItem(item);
     setShowConfirmation(true);
   };
 
-  const handleConfirmProposal = () => {
+  const handleConfirmProposal = async () => {
     setShowConfirmation(false);
     setIsSubmitting(true);
-    setTimeout(() => {
+    
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Please log in to send proposals");
       setIsSubmitting(false);
-      setShowSuccess(true);
-      const participantData = getParticipantData(
-        "marketplace",
-        confirmationItem.id
-      );
-      const dealDetails = {
-        type: "investment",
-        amount: confirmationItem.investmentRange,
-        stage: confirmationItem.preferredStage,
-        sectors: confirmationItem.focusSectors,
+        return;
+      }
+
+      // جلب business ID صحيح
+      let businessId;
+      try {
+        businessId = await getBusinessId();
+        console.log("businessId to send:", businessId);
+        if (!businessId || businessId === "default" || businessId.length !== 24) {
+          throw new Error("Invalid business ID");
+        }
+      } catch (error) {
+        alert("Please create a business first before sending proposals");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // إنشاء طلب استثمار للمستثمر
+      const requestData = {
+        title: `Investment Proposal for ${confirmationItem.fullName || confirmationItem.username}`,
+        offerType: "Investment", // تغيير من requestType إلى offerType
+        category: "Venture Capital",
+        businessId: businessId, // استخدام businessId الصحيح
+        amount: confirmationItem.investmentRange?.max || 100000,
+        purpose: "Business expansion and growth",
+        summary: `Seeking investment from ${confirmationItem.fullName || confirmationItem.username} for business development`,
+        returnDetails: "Equity stake and profit sharing",
+        description: `Investment proposal for business partnership with ${confirmationItem.fullName || confirmationItem.username}. Investment range: ${confirmationItem.investmentRange?.min ? `$${confirmationItem.investmentRange.min}` : ''}${confirmationItem.investmentRange?.min && confirmationItem.investmentRange?.max ? ' - ' : ''}${confirmationItem.investmentRange?.max ? `$${confirmationItem.investmentRange.max}` : ''}. Preferred stage: ${confirmationItem.preferredStage || 'Any'}. Focus sectors: ${confirmationItem.focusSectors?.join(', ') || 'All sectors'}.`
       };
-      buttonHandlers.handleMakeDeal(
-        confirmationItem.id,
-        participantData,
-        dealDetails,
-        navigate
-      );
-      setTimeout(() => setShowSuccess(false), 3000);
-    }, 1500);
+
+      const formData = new FormData();
+      Object.keys(requestData).forEach(key => {
+        if (requestData[key] !== undefined && requestData[key] !== null && requestData[key] !== '') {
+          formData.append(key, requestData[key]);
+        }
+      });
+
+      // طباعة البيانات للتصحيح
+      console.log("Sending request data:", requestData);
+
+      await axios.post("http://localhost:5000/api/requests", formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        },
+      });
+
+      setShowSuccess(true);
+      setShowDealModal(false);
+      setSelectedSupplier(null);
+      setTimeout(() => {
+        setShowSuccess(false);
+        // navigate("/payment", { ... })
+      }, 3000);
+    } catch (error) {
+      console.error("Error sending proposal:", error);
+      if (error.response) {
+        console.error("Error response:", error.response.data);
+        alert(`Failed to send proposal: ${error.response.data.message || 'Please check your data and try again.'}`);
+      } else {
+        alert("Failed to send proposal. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleMakeDeal = (item) => {
+    // فحص وجود business ID قبل فتح modal الصفقة
+    if (!currentBusinessId || currentBusinessId === "default") {
+      alert("Please create a business first before making deals");
+      return;
+    }
+    console.log("Selected supplier for deal:", item);
+    console.log("Supplier type:", item.type);
+    console.log("Supplier stock:", item.stock);
     setSelectedSupplier(item);
     setShowDealModal(true);
     setDealForm({});
   };
 
-  const handleDealSubmit = (e) => {
+  const handleDealSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
+    
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Please log in to make deals");
       setIsSubmitting(false);
-      setShowSuccess(true);
-      const participantData = getParticipantData(
-        "marketplace",
-        selectedSupplier.id
-      );
-      const dealDetails = {
-        type: selectedSupplier.type,
+        return;
+      }
+
+      // جلب business ID صحيح
+      let businessId;
+      try {
+        businessId = await getBusinessId();
+        console.log("businessId to send:", businessId);
+        if (!businessId || businessId === "default" || businessId.length !== 24) {
+          throw new Error("Invalid business ID");
+        }
+      } catch (error) {
+        alert("Please create a business first before sending deals");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // تحديد نوع الطلب بناءً على نوع المورد
+      const isProduct = selectedSupplier.stock !== undefined || selectedSupplier.ordersCount !== undefined;
+      const isService = selectedSupplier.files !== undefined;
+      
+      let requestData = {
+        title: `Deal Request for ${selectedSupplier.name}`,
+        offerType: isProduct ? "Supply" : "Supply", // تغيير من requestType إلى offerType
         category: selectedSupplier.category,
-        price: selectedSupplier.price,
-        description: selectedSupplier.description,
-        ...dealForm,
+        businessId: businessId, // استخدام businessId الصحيح
+        description: `Deal request for ${selectedSupplier.name}. ${dealForm.notes ? `Notes: ${dealForm.notes}` : ''}`,
       };
-      buttonHandlers.handleMakeDeal(
-        selectedSupplier.id,
-        participantData,
-        dealDetails,
-        navigate
-      );
-      setTimeout(() => {
+
+      if (isProduct) {
+        // طلب منتج
+        requestData = {
+          ...requestData,
+          supplyType: "Product",
+          quantity: dealForm.quantity || 1,
+          deadline: dealForm.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        };
+      } else {
+        // طلب خدمة
+        requestData = {
+          ...requestData,
+          supplyType: "Service",
+          deadline: dealForm.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        };
+      }
+
+      const formData = new FormData();
+      Object.keys(requestData).forEach(key => {
+        if (requestData[key] !== undefined && requestData[key] !== null && requestData[key] !== '') {
+          formData.append(key, requestData[key]);
+        }
+      });
+
+      // طباعة البيانات للتصحيح
+      console.log("Sending deal request data:", requestData);
+
+      await axios.post("http://localhost:5000/api/requests", formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        },
+      });
+
+      setShowSuccess(true);
         setShowDealModal(false);
         setSelectedSupplier(null);
-        // Redirect to PaymentPage with deal data
-        navigate("/payment", {
-          state: {
-            amount: selectedSupplier.price || 0,
-            quantity: dealForm.quantity || 1,
-            otherParty: selectedSupplier.name || "",
-            userType: "Entrepreneur", // or get from auth/localStorage
-            role: "Payer",
-          },
-        });
+      setTimeout(() => {
+        setShowSuccess(false);
+        // Stay in the same page instead of redirecting
+        // navigate("/payment", {
+        //   state: {
+        //     amount: requestData.amount || 0,
+        //     quantity: dealForm.quantity || 1,
+        //     otherParty: selectedSupplier.name || "",
+        //     userType: "Entrepreneur",
+        //     role: "Payer",
+        //   },
+        // });
       }, 3000);
-    }, 1500);
+    } catch (error) {
+      console.error("Error creating deal:", error);
+      if (error.response) {
+        console.error("Error response:", error.response.data);
+        
+        // Handle authentication errors
+        if (error.response.status === 401) {
+          alert("Your session has expired. Please log in again.");
+          // Redirect to login page
+          navigate("/login");
+          return;
+        }
+        
+        alert(`Failed to create deal: ${error.response.data.message || 'Please check your data and try again.'}`);
+      } else {
+        alert("Failed to create deal. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFormChange = (e) => {
@@ -402,6 +592,70 @@ const Marketplace = () => {
       [e.target.name]: e.target.value,
     });
   };
+
+  // وظيفة فتح الشات مع المستثمر
+  const handleContactInvestor = (item) => {
+    const participantData = getParticipantData("marketplace", item._id);
+    buttonHandlers.handleContact(item._id, participantData, navigate);
+  };
+
+  // وظيفة عرض تفاصيل المستثمر
+  const handleViewInvestorDetails = (item) => {
+    setSelectedDetailsItem(item);
+  };
+
+  // وظيفة للحصول على business ID
+  const [currentBusinessId, setCurrentBusinessId] = useState(null);
+  const [businessIdLoading, setBusinessIdLoading] = useState(false);
+
+  const getBusinessId = async () => {
+    if (currentBusinessId && currentBusinessId !== "default" && currentBusinessId.length === 24) {
+      return currentBusinessId;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found");
+      
+      const res = await axios.get("http://localhost:5000/api/businesses/my", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const businesses = res.data.data || res.data.businesses || [];
+      if (businesses.length > 0 && businesses[0]._id && businesses[0]._id.length === 24) {
+        setCurrentBusinessId(businesses[0]._id);
+        return businesses[0]._id;
+      } else {
+        throw new Error("No valid business found");
+      }
+    } catch (error) {
+      console.error("Error fetching business ID:", error);
+      
+      // Handle authentication errors
+      if (error.response && error.response.status === 401) {
+        alert("Your session has expired. Please log in again.");
+        navigate("/login");
+        throw new Error("Authentication failed");
+      }
+      
+      throw new Error("Failed to get business ID");
+    }
+  };
+
+  // جلب business ID عند تحميل الصفحة
+  useEffect(() => {
+    const loadBusinessId = async () => {
+      setBusinessIdLoading(true);
+      try {
+        await getBusinessId();
+      } catch (error) {
+        console.error("Failed to load business ID:", error);
+      } finally {
+        setBusinessIdLoading(false);
+      }
+    };
+    loadBusinessId();
+  }, []);
 
   // 1. أضف تبويب المستثمرين في الأعلى
   // 2. State لإدارة بيانات المستثمرين
@@ -427,6 +681,18 @@ const Marketplace = () => {
         .finally(() => setInvestorLoading(false));
     }
   }, [activeTab]);
+
+  // عرض loading إذا كان businessId لم يتم تحميله بعد
+  if (businessIdLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#EEF8F7" }}>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#457B9D]" />
+          <p className="text-gray-600">Loading business information...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: "#EEF8F7" }}>
@@ -546,13 +812,15 @@ const Marketplace = () => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Confirm Proposal
+                Confirm Deal Request
               </h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to share this project with the investor?
-                They will receive your basic project info, contact details, and
-                documents (if any).
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to send a deal request to {confirmationItem?.fullName || confirmationItem?.username}? 
+                This will create a formal investment proposal that they can review and respond to.
               </p>
+              <div className="text-xs text-gray-500 text-center mb-6">
+                * A 2% platform commission is applied to every successful deal.
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowConfirmation(false)}
@@ -562,9 +830,17 @@ const Marketplace = () => {
                 </button>
                 <button
                   onClick={handleConfirmProposal}
-                  className="flex-1 px-4 py-2 bg-[#457B9D] text-white rounded-lg hover:bg-[#1D3557]"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-[#457B9D] text-white rounded-lg hover:bg-[#1D3557] disabled:opacity-50 flex items-center justify-center"
                 >
-                  Confirm
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Deal Request"
+                  )}
                 </button>
               </div>
             </div>
@@ -576,13 +852,11 @@ const Marketplace = () => {
           <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50">
             {activeTab === "investors" ? (
               <p>
-                Your project has been sent! The investor will contact you if
-                interested.
+                Deal request sent successfully! The investor will review your proposal and contact you if interested.
               </p>
             ) : (
               <p>
-                Your request has been sent to the supplier. You will be notified
-                once they respond.
+                Deal request sent successfully! The supplier will review your request and respond soon.
               </p>
             )}
           </div>
@@ -645,7 +919,7 @@ const Marketplace = () => {
 
                 {/* Deal Form */}
                 <form onSubmit={handleDealSubmit}>
-                  {selectedSupplier.type === "product" ? (
+                  {(selectedSupplier.type === "product" || selectedSupplier.stock !== undefined) ? (
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -776,49 +1050,10 @@ const Marketplace = () => {
                       </div>
                     </div>
                   )}
-                  {/* Profit/Commission Section */}
-                  {(() => {
-                    let total = 0;
-                    if (
-                      selectedSupplier.type === "product" &&
-                      selectedSupplier.price &&
-                      dealForm.quantity
-                    ) {
-                      total =
-                        Number(selectedSupplier.price) *
-                        Number(dealForm.quantity);
-                    } else if (dealForm.budget) {
-                      total = Number(dealForm.budget);
-                    }
-                    if (total > 0) {
-                      return (
-                        <div className="grid grid-cols-3 gap-4 mt-4">
-                          <div></div>
-                          <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                            <p className="text-sm text-yellow-700 font-medium">
-                              Platform Commission (2%)
-                            </p>
-                            <p className="text-lg font-bold text-yellow-800">
-                              ${(total * 0.02).toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                            <p className="text-sm text-green-700 font-medium">
-                              Net Amount
-                            </p>
-                            <p className="text-lg font-bold text-green-800">
-                              ${(total * 0.98).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  <div className="mt-2 text-xs text-gray-500 text-center">
-                    * A 2% platform commission is applied to every successful
-                    deal.
-                  </div>
+                                     <div className="mt-2 text-xs text-gray-500 text-center">
+                     * A 2% platform commission is applied to every successful
+                     deal.
+                   </div>
                   <div className="mt-6 flex gap-3">
                     <button
                       type="button"
@@ -859,85 +1094,268 @@ const Marketplace = () => {
               >
                 ✕
               </button>
-              <h2 className="text-2xl font-bold mb-4">
-                {selectedDetailsItem.name}
-              </h2>
-              {selectedDetailsItem.images &&
-                selectedDetailsItem.images.length > 0 && (
-                  <img
-                    src={selectedDetailsItem.images[0]}
-                    alt={selectedDetailsItem.name}
-                    className="w-full h-64 object-cover rounded mb-4"
-                  />
-                )}
-              <div className="space-y-2 text-sm">
-                {selectedDetailsItem.category && (
+              {/* إذا كان مستثمر */}
+              {selectedDetailsItem.investmentRange || selectedDetailsItem.role === 'investor' ? (
+                <>
+                  {/* ... تفاصيل المستثمر كما هي ... */}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                      {selectedDetailsItem.avatar || selectedDetailsItem.photo ? (
+                        <img
+                          src={selectedDetailsItem.avatar || selectedDetailsItem.photo}
+                          alt={selectedDetailsItem.fullName || selectedDetailsItem.username}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = "/default-avatar.png";
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src="/default-avatar.png"
+                          alt="Default Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
                   <div>
-                    <strong>Category:</strong> {selectedDetailsItem.category}
+                      <h2 className="text-2xl font-bold text-[#1D3557]">
+                        {selectedDetailsItem.fullName || selectedDetailsItem.username}
+                      </h2>
+                      <p className="text-gray-600">Investor</p>
+                    </div>
+                  </div>
+                  {/* ... باقي تفاصيل المستثمر ... */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Basic Information</h3>
+                      {selectedDetailsItem.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">{selectedDetailsItem.email}</span>
                   </div>
                 )}
-                {selectedDetailsItem.price !== undefined && (
-                  <div>
-                    <strong>Price:</strong> ${selectedDetailsItem.price}
+                      {(selectedDetailsItem.country || selectedDetailsItem.state || selectedDetailsItem.city) && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-gray-500" />
+                            Location
+                          </h4>
+                          <div className="ml-6 space-y-1">
+                            {selectedDetailsItem.country && (
+                              <div className="flex items-center gap-2">
+                                <Globe className="w-3 h-3 text-gray-400" />
+                                <span className="text-sm text-gray-600"><strong>Country:</strong> {selectedDetailsItem.country}</span>
                   </div>
                 )}
-                {selectedDetailsItem.stock !== undefined && (
-                  <div>
-                    <strong>Stock:</strong> {selectedDetailsItem.stock}
+                            {selectedDetailsItem.state && (
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span className="text-sm text-gray-600"><strong>State/Province:</strong> {selectedDetailsItem.state}</span>
                   </div>
                 )}
-                {selectedDetailsItem.ordersCount !== undefined && (
-                  <div>
-                    <strong>Orders:</strong> {selectedDetailsItem.ordersCount}
+                            {selectedDetailsItem.city && (
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span className="text-sm text-gray-600"><strong>City:</strong> {selectedDetailsItem.city}</span>
                   </div>
                 )}
-                {selectedDetailsItem.rating !== undefined && (
-                  <div>
-                    <strong>Rating:</strong> {selectedDetailsItem.rating}
+                          </div>
                   </div>
                 )}
-                {selectedDetailsItem.status && (
+                    </div>
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Investment Details</h3>
+                      {selectedDetailsItem.investmentRange && (
                   <div>
-                    <strong>Status:</strong> {selectedDetailsItem.status}
+                          <strong className="text-sm text-gray-700">Investment Range:</strong>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {selectedDetailsItem.investmentRange.min ? `$${selectedDetailsItem.investmentRange.min.toLocaleString()}` : ''}
+                            {selectedDetailsItem.investmentRange.min && selectedDetailsItem.investmentRange.max ? ' - ' : ''}
+                            {selectedDetailsItem.investmentRange.max ? `$${selectedDetailsItem.investmentRange.max.toLocaleString()}` : ''}
+                          </div>
                   </div>
                 )}
-                {selectedDetailsItem.isActive !== undefined && (
+                      {selectedDetailsItem.preferredStage && (
                   <div>
-                    <strong>Active:</strong>{" "}
-                    {selectedDetailsItem.isActive ? "Yes" : "No"}
+                          <strong className="text-sm text-gray-700">Preferred Stage:</strong>
+                          <div className="text-sm text-gray-600 mt-1">{selectedDetailsItem.preferredStage}</div>
                   </div>
                 )}
-                {selectedDetailsItem.files &&
-                  selectedDetailsItem.files.length > 0 && (
+                      {selectedDetailsItem.focusSectors && selectedDetailsItem.focusSectors.length > 0 && (
                     <div>
-                      <strong>Files:</strong>{" "}
-                      {selectedDetailsItem.files.map((file, idx) => (
-                        <a
-                          key={idx}
-                          href={file}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline ml-2"
-                        >
-                          File {idx + 1}
-                        </a>
-                      ))}
+                          <strong className="text-sm text-gray-700">Focus Sectors:</strong>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {selectedDetailsItem.focusSectors.map((sector, idx) => (
+                              <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[#457B9D]/10 text-[#457B9D]">{sector}</span>
+                            ))}
+                          </div>
                     </div>
                   )}
-                {selectedDetailsItem.description && (
-                  <div>
-                    <strong>Description:</strong>{" "}
-                    {selectedDetailsItem.description}
+                    </div>
                   </div>
+                  {selectedDetailsItem.bio && (
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-3">Biography</h3>
+                      <p className="text-gray-700 leading-relaxed">{selectedDetailsItem.bio}</p>
+                  </div>
+                  )}
+                  <div className="mt-6 space-y-2 text-sm">
+                    {selectedDetailsItem.company && (
+                      <div><strong>Company:</strong> {selectedDetailsItem.company}</div>
+                    )}
+                    {selectedDetailsItem.website && (
+                      <div><strong>Website:</strong> <a href={selectedDetailsItem.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{selectedDetailsItem.website}</a></div>
+                    )}
+                    {selectedDetailsItem.linkedin && (
+                      <div><strong>LinkedIn:</strong> <a href={selectedDetailsItem.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{selectedDetailsItem.linkedin}</a></div>
                 )}
                 {selectedDetailsItem.createdAt && (
-                  <div>
-                    <strong>Created At:</strong>{" "}
-                    {new Date(selectedDetailsItem.createdAt).toLocaleString()}
+                      <div><strong>Member Since:</strong> {new Date(selectedDetailsItem.createdAt).toLocaleDateString()}</div>
+                    )}
                   </div>
-                )}
-                {/* Add any other fields as needed */}
+                  <div className="flex gap-3 mt-6 pt-4 border-t">
+                    <button onClick={() => handleProposalClick(selectedDetailsItem)} className="flex-1 px-4 py-2 bg-[#457B9D] text-white rounded-lg hover:bg-[#1D3557] transition-colors font-medium">Make a Deal</button>
+                    <button onClick={() => handleContactInvestor(selectedDetailsItem)} className="flex-1 px-4 py-2 border border-[#457B9D] text-[#457B9D] rounded-lg hover:bg-[#457B9D] hover:text-white transition-colors font-medium">Contact</button>
+                  </div>
+                </>
+              ) : (
+                // مودال تفاصيل المورد/الخدمة/المنتج
+                <>
+                  <div className="flex items-center gap-4 mb-6">
+                  <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    {selectedDetailsItem.images && selectedDetailsItem.images.length > 0 ? (
+                      <img 
+                        src={selectedDetailsItem.images[0]} 
+                        alt={selectedDetailsItem.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.log("Modal image failed to load:", selectedDetailsItem.images[0]);
+                          e.target.src = "/logo2.png";
+                        }}
+                        onLoad={(e) => {
+                          console.log("Modal image loaded successfully:", selectedDetailsItem.images[0]);
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src="/logo2.png"
+                        alt="Default Product Image"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold text-[#1D3557] mb-2">{selectedDetailsItem.name}</h2>
+                                               <p className="text-gray-600 mb-1">
+                           By: {selectedDetailsItem.supplierId?.fullName || selectedDetailsItem.supplierId?.username || selectedDetailsItem.supplierId?.email || "Unknown Supplier"}
+                         </p>
+                      <p className="text-gray-600 mb-1">
+                        {selectedDetailsItem.category} • {selectedDetailsItem.stock !== undefined ? "Product" : "Service"}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        {selectedDetailsItem.rating !== undefined && (
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span>{selectedDetailsItem.rating}</span>
+                          </div>
+                        )}
+                        {selectedDetailsItem.ordersCount !== undefined && (
+                          <div className="flex items-center gap-1">
+                            <Package className="w-4 h-4 text-gray-400" />
+                            <span>{selectedDetailsItem.ordersCount} orders</span>
+                          </div>
+                        )}
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          selectedDetailsItem.isActive 
+                            ? "bg-green-100 text-green-800" 
+                            : "bg-gray-100 text-gray-600"
+                        }`}>
+                          {selectedDetailsItem.isActive ? "Active" : "Inactive"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Basic Information</h3>
+                      {selectedDetailsItem.category && (
+                        <div>
+                          <strong className="text-sm text-gray-700">Category:</strong>
+                          <div className="text-sm text-gray-600 mt-1">{selectedDetailsItem.category}</div>
+                        </div>
+                      )}
+                      {selectedDetailsItem.price !== undefined && (
+                        <div>
+                          <strong className="text-sm text-gray-700">Price:</strong>
+                          <div className="text-lg font-bold text-[#457B9D] mt-1">${selectedDetailsItem.price}</div>
+                        </div>
+                      )}
+                      {selectedDetailsItem.stock !== undefined && (
+                        <div>
+                          <strong className="text-sm text-gray-700">Available Stock:</strong>
+                          <div className="text-sm text-gray-600 mt-1">{selectedDetailsItem.stock} units</div>
+                        </div>
+                      )}
+                      {selectedDetailsItem.status && (
+                        <div>
+                          <strong className="text-sm text-gray-700">Status:</strong>
+                          <div className="text-sm text-gray-600 mt-1">{selectedDetailsItem.status}</div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Additional Details</h3>
+                      {selectedDetailsItem.ordersCount !== undefined && (
+                        <div>
+                          <strong className="text-sm text-gray-700">Total Orders:</strong>
+                          <div className="text-sm text-gray-600 mt-1">{selectedDetailsItem.ordersCount}</div>
+                        </div>
+                      )}
+                      {selectedDetailsItem.rating !== undefined && (
+                        <div>
+                          <strong className="text-sm text-gray-700">Rating:</strong>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span className="text-sm text-gray-600">{selectedDetailsItem.rating}/5</span>
+                          </div>
+                        </div>
+                      )}
+                      {selectedDetailsItem.createdAt && (
+                        <div>
+                          <strong className="text-sm text-gray-700">Listed Since:</strong>
+                          <div className="text-sm text-gray-600 mt-1">{new Date(selectedDetailsItem.createdAt).toLocaleDateString()}</div>
+                        </div>
+                      )}
+                    {selectedDetailsItem.files && selectedDetailsItem.files.length > 0 && (
+                        <div>
+                          <strong className="text-sm text-gray-700">Attached Files:</strong>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {selectedDetailsItem.files.map((file, idx) => (
+                              <a 
+                                key={idx} 
+                                href={file} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-blue-600 underline text-sm hover:text-blue-800"
+                              >
+                                File {idx + 1}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
               </div>
+                  </div>
+
+                  {selectedDetailsItem.description && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-3">Description</h3>
+                      <p className="text-gray-700 leading-relaxed">{selectedDetailsItem.description}</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
@@ -1017,89 +1435,66 @@ const Marketplace = () => {
                 {investorData.map((item, index) => (
                   <div
                     key={`investor-${item._id || index}`}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200"
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col items-center p-6 mb-2"
                   >
-                    <div
-                      className="flex items-center justify-center bg-gray-100"
-                      style={{ height: "220px" }}
-                    >
+                    <div className="flex items-center justify-center bg-gray-100 rounded-full border-2 border-[#457B9D] shadow mb-4" style={{ width: 96, height: 96 }}>
                       {item.avatar || item.photo ? (
                         <img
                           src={item.avatar || item.photo}
                           alt={item.fullName || item.username}
-                          className="w-24 h-24 rounded-full object-cover border-2 border-[#457B9D] shadow"
-                          onError={(e) => {
-                            e.target.src = "/default-avatar.png";
-                          }}
+                          className="w-24 h-24 rounded-full object-cover"
+                          onError={e => { e.target.src = "/logo2.png"; }}
                         />
                       ) : (
                         <img
-                          src="/default-avatar.png"
-                          alt="Default Avatar"
-                          className="w-24 h-24 rounded-full object-cover border-2 border-[#457B9D] shadow"
+                          src="/logo2.png"
+                          alt="Default Investor Logo"
+                          className="w-24 h-24 rounded-full object-cover"
                         />
                       )}
                     </div>
-                    <div className="p-6 flex-1 flex flex-col justify-between">
-                      <div>
-                        <h3 className="text-xl font-bold text-[#1D3557] mb-1">
+                    <h3 className="text-xl font-bold text-[#1D3557] mb-1 text-center w-full">
                           {item.fullName || item.username}
                         </h3>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {item.country && (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-[#457B9D]/10 text-[#457B9D]">
-                              {item.country}
-                            </span>
-                          )}
-                          {item.city && (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-[#457B9D]/10 text-[#457B9D]">
-                              {item.city}
-                            </span>
-                          )}
-                        </div>
-                        {item.investmentRange &&
-                          (item.investmentRange.min ||
-                            item.investmentRange.max) && (
-                            <div className="mb-2 text-sm text-gray-700">
-                              <strong>Investment Range:</strong>{" "}
-                              {item.investmentRange.min
-                                ? `$${item.investmentRange.min}`
-                                : ""}
-                              {item.investmentRange.min &&
-                              item.investmentRange.max
-                                ? " - "
-                                : ""}
-                              {item.investmentRange.max
-                                ? `$${item.investmentRange.max}`
-                                : ""}
+                    <div className="text-gray-700 text-sm w-full text-center mb-2 flex flex-col gap-1">
+                      {(item.country || item.city) && (
+                        <div>
+                          {item.country && <span>Country: {item.country}</span>}
+                          {item.country && item.city && <span> | </span>}
+                          {item.city && <span>City: {item.city}</span>}
                             </div>
                           )}
-                        {item.preferredStage && (
-                          <div className="mb-2 text-sm text-gray-700">
-                            <strong>Preferred Stage:</strong>{" "}
-                            {item.preferredStage}
+                      {item.state && <div>State: {item.state}</div>}
+                      {item.investmentRange && (item.investmentRange.min || item.investmentRange.max) && (
+                        <div>
+                          Investment Range: {item.investmentRange.min ? `$${item.investmentRange.min}` : ''}{item.investmentRange.min && item.investmentRange.max ? ' - ' : ''}{item.investmentRange.max ? `$${item.investmentRange.max}` : ''}
                           </div>
                         )}
+                      {item.preferredStage && <div>Preferred Stage: {item.preferredStage}</div>}
                         {item.focusSectors && item.focusSectors.length > 0 && (
-                          <div className="mb-2 text-sm text-gray-700">
-                            <strong>Sectors:</strong>{" "}
-                            {item.focusSectors.join(", ")}
-                          </div>
+                        <div>Sectors: {item.focusSectors.join(', ')}</div>
                         )}
-                        {item.bio && (
-                          <div className="mb-2 text-sm text-gray-700">
-                            <strong>Bio:</strong> {item.bio}
+                      {item.bio && <div className="mt-2 text-xs text-gray-500">{item.bio}</div>}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex gap-2 mt-4">
+                    <div className="flex gap-2 w-full justify-center pt-4">
                         <button
-                          className="flex-1 px-3 py-2 bg-[#457B9D] text-white rounded-lg hover:bg-[#1D3557] transition-colors font-medium text-sm"
-                          onClick={() => handleMakeDeal(item)}
+                        className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg bg-white hover:bg-[#F1FAEE] transition-colors text-sm"
+                        onClick={() => handleContactInvestor(item)}
+                      >
+                        Contact
+                      </button>
+                        <button
+                          className="flex-1 px-3 py-2 bg-[#457B9D] text-white rounded-lg hover:bg-[#1D3557] transition-colors font-medium text-xs whitespace-nowrap"
+                        onClick={() => handleProposalClick(item)}
                         >
                           Make a Deal
                         </button>
-                      </div>
+                      <button
+                        className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg bg-white hover:bg-[#F1FAEE] transition-colors text-sm"
+                        onClick={() => handleViewInvestorDetails(item)}
+                      >
+                        Details
+                        </button>
                     </div>
                   </div>
                 ))}
@@ -1142,23 +1537,12 @@ const Marketplace = () => {
                 const isService = item.files !== undefined;
                 return (
                   <div
-                    key={`${
-                      item.type ||
-                      (isProduct
-                        ? "product"
-                        : isService
-                        ? "service"
-                        : "supplier")
-                    }-${item._id || index}`}
+                    key={`${item.type || (isProduct ? "product" : isService ? "service" : "supplier")}-${item._id || index}`}
                     className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 ${
                       viewMode === "list" ? "flex" : ""
                     }`}
                   >
-                    <div
-                      className={`${
-                        viewMode === "list" ? "w-80 flex-shrink-0" : ""
-                      }`}
-                    >
+                    <div className={`${viewMode === "list" ? "w-80 flex-shrink-0" : ""}`}>
                       <div
                         className={`bg-gray-100 flex items-center justify-center ${
                           viewMode === "list" ? "h-64" : "h-56"
@@ -1170,23 +1554,37 @@ const Marketplace = () => {
                             alt={item.name}
                             className={`w-full h-full object-cover`}
                             onError={(e) => {
-                              e.target.style.display = "none";
+                              console.log("Image failed to load:", item.images[0]);
+                              e.target.src = "/logo2.png";
+                            }}
+                            onLoad={(e) => {
+                              // Optional: log successful image loads
+                              console.log("Image loaded successfully:", item.images[0]);
                             }}
                           />
                         ) : (
-                          <div className="flex items-center justify-center text-gray-400 w-full h-full">
-                            <Package className="w-12 h-12" />
-                          </div>
+                          <img
+                            src="/logo2.png"
+                            alt="Default Product Image"
+                            className="w-full h-full object-cover"
+                          />
                         )}
                       </div>
                     </div>
-                    <div
-                      className={`p-4 ${viewMode === "list" ? "flex-1" : ""}`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900 leading-tight">
+                    <div className={`p-4 ${viewMode === "list" ? "flex-1" : ""}`}>
+                      <h3 className="text-lg font-semibold text-gray-900 leading-tight mb-1">
                           {item.name}
                         </h3>
+                                                                       <p className="text-sm text-gray-600 mb-1">
+                            By: {item.supplierId?.fullName || item.supplierId?.username || item.supplierId?.email || "Unknown Supplier"}
+                          </p>
+                      <p className="text-sm text-gray-600 mb-2 leading-relaxed line-clamp-2">
+                        {item.description}
+                      </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-lg font-semibold text-[#457B9D]">
+                          ${item.price}
+                        </span>
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded-full flex-shrink-0 ml-2 ${
                             item.isActive
@@ -1196,47 +1594,6 @@ const Marketplace = () => {
                         >
                           {item.isActive ? "Active" : "Inactive"}
                         </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2 leading-relaxed line-clamp-2">
-                        {item.description}
-                      </p>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                          {item.category}
-                        </span>
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                          {isProduct ? "Product" : isService ? "Service" : ""}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-lg font-semibold text-[#457B9D]">
-                          ${item.price}
-                        </span>
-                        {isProduct && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            Stock: {item.stock}
-                          </span>
-                        )}
-                        {isProduct && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            Orders: {item.ordersCount}
-                          </span>
-                        )}
-                        {isProduct && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            Rating: {item.rating}
-                          </span>
-                        )}
-                        {isProduct && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            Status: {item.status}
-                          </span>
-                        )}
-                        {isService && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            Status: {item.status}
-                          </span>
-                        )}
                       </div>
                       <div className="flex gap-2 mt-2">
                         <button
